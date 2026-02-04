@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Diário Motor - Parkinson</title>
+    <style>
+        :root {
+            --on-color: #28a745; /* Verde - Bom */
+            --dys-color: #ffc107; /* Amarelo - Movimentos */
+            --off-color: #dc3545; /* Vermelho - Ruim */
+            --sleep-color: #6c757d; /* Cinza - Dormindo */
+            --bg-color: #f4f6f9;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px; /* Espaço para menu fixo */
+        }
+
+        /* CABEÇALHO */
+        header {
+            background-color: #0056b3;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; }
+        .subtitle { font-size: 0.8rem; opacity: 0.9; margin-top: 5px; }
+
+        /* PAINEL DE CONTROLE / INSTRUÇÕES */
+        .panel {
+            background: white;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .alert-box {
+            background-color: #e8f4fd;
+            border-left: 4px solid #0056b3;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .btn-permission {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        /* GRID DO DIÁRIO */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .time-slot {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .time-slot.active-now {
+            border-color: #0056b3;
+            background-color: #f0f7ff;
+            box-shadow: 0 0 10px rgba(0, 86, 179, 0.3);
+        }
+
+        .time-label {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #eee;
+            display: none;
+        }
+
+        /* BOTÕES DE ESTADO */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .opt-btn {
+            border: 1px solid #ccc;
+            padding: 15px 5px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: 600;
+            transition: transform 0.1s;
+        }
+
+        .opt-btn:active { transform: scale(0.98); }
+
+        /* Cores dos botões quando selecionados */
+        .opt-btn[data-value="ON"].selected { background-color: var(--on-color); color: white; border-color: var(--on-color); }
+        .opt-btn[data-value="DYS"].selected { background-color: var(--dys-color); color: #000; border-color: var(--dys-color); }
+        .opt-btn[data-value="OFF"].selected { background-color: var(--off-color); color: white; border-color: var(--off-color); }
+        .opt-btn[data-value="SLEEP"].selected { background-color: var(--sleep-color); color: white; border-color: var(--sleep-color); }
+
+        /* Ícones simples via texto */
+        .icon { font-size: 1.5rem; margin-bottom: 5px; display: block; }
+
+        /* EXPORTAÇÃO */
+        .export-section {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+
+        /* MENU INFERIOR FLUTUANTE */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: white;
+            border-top: 1px solid #ccc;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            background: none;
+            border: none;
+            font-size: 0.8rem;
+            color: #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .nav-btn span { font-size: 1.2rem; }
+
+        /* Esconder abas não ativas */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+    </style>
+</head>
+<body>
+
+<audio id="alarm-sound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
+<header>
+    <h1>Diário Motor Eletrônico</h1>
+    <div class="subtitle" id="current-date-display">Carregando data...</div>
+</header>
+
+<div id="tab-diary" class="tab-content active">
+    
+    <div class="panel" id="permission-panel">
+        <h3>🔔 Ativar Alarmes</h3>
+        <p>Para o diário te lembrar a cada 30 minutos, precisamos da sua permissão.</p>
+        <button class="btn-permission" onclick="requestNotificationPermission()">ATIVAR LEMBRETES</button>
+        <p style="font-size: 0.8rem; color: #666;">Nota: Mantenha esta aba aberta no navegador para o alarme tocar.</p>
+    </div>
+
+    <div style="padding: 0 10px; margin-top: 10px;">
+        <button class="btn-permission" style="background-color: #6c757d; font-size: 0.9rem;" onclick="scrollToCurrent()">Ir para Agora</button>
+    </div>
+
+    <div class="timeline" id="timeline-container">
+        </div>
+</div>
+
+<div id="tab-info" class="tab-content">
+    <div class="panel">
+        <h2>Instruções</h2>
+        [cite_start]<p>Preencha este diário para ajudar seu médico a ajustar sua medicação[cite: 432]. [cite_start]Marque como você se sentiu na <strong>MAIOR PARTE</strong> de cada período de 30 minutos[cite: 438].</p>
+        
+        <h3>Definições:</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li style="margin-bottom: 10px; border-left: 5px solid var(--on-color); padding-left: 10px;">
+                <strong>ON (Ligado/Bem):</strong><br>
+                [cite_start]Mobilidade boa ou praticamente normal[cite: 441, 442].
+            </li>
+            <li style="margin-bottom: 10px; border-left: 5px solid var(--dys-color); padding-left: 10px;">
+                <strong>ON com Discinesia:</strong><br>
+                [cite_start]Com movimentos involuntários de contorção que incomodam[cite: 444, 446].
+            </li>
+            <li style="margin-bottom: 10px; border-left: 5px solid var(--off-color); padding-left: 10px;">
+                <strong>OFF (Desligado/Travado):</strong><br>
+                [cite_start]Rigidez, lentidão marcante ou imobilidade[cite: 447, 449].
+            </li>
+            <li style="margin-bottom: 10px; border-left: 5px solid var(--sleep-color); padding-left: 10px;">
+                <strong>DORMINDO:</strong><br>
+                [cite_start]Tempo que passou dormindo[cite: 448].
+            </li>
+        </ul>
+    </div>
+
+    <div class="panel export-section">
+        <h3>Área do Pesquisador</h3>
+        <div class="alert-box">
+            <label>ID do Paciente:</label>
+            <input type="text" id="patient-id" value="PACIENTE-01" style="width: 100%; padding: 5px; margin-top: 5px;">
+        </div>
+        <button class="btn-permission" onclick="exportCSV()">📥 Baixar Relatório (CSV)</button>
+        <button class="btn-permission" style="background-color: #dc3545; margin-top: 10px;" onclick="resetData()">🗑️ Limpar Tudo</button>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <button class="nav-btn" onclick="switchTab('tab-diary')">
+        <span>📝</span>
+        Diário
+    </button>
+    <button class="nav-btn" onclick="switchTab('tab-info')">
+        <span>ℹ️</span>
+        Instruções / Enviar
+    </button>
+</nav>
+
+<script>
+    /**
+     * CONFIGURAÇÃO E DADOS
+     */
+    const STORAGE_KEY = 'motor_diary_data_v1';
+    let diaryData = {}; // Objeto para armazenar as respostas: { "00:00": "ON", ... }
+    
+    [cite_start]// Lista de horários de 30 min (00:00 até 23:30) [cite: 433]
+    const timeSlots = [];
+    for (let h = 0; h < 24; h++) {
+        timeSlots.push(`${String(h).padStart(2, '0')}:00`);
+        timeSlots.push(`${String(h).padStart(2, '0')}:30`);
+    }
+
+    /**
+     * INICIALIZAÇÃO
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+        // Data atual
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date-display').innerText = now.toLocaleDateString('pt-BR', options);
+
+        // Carregar dados salvos
+        loadData();
+
+        // Renderizar timeline
+        renderTimeline();
+
+        // Verificar permissão de notificação
+        checkNotificationStatus();
+
+        // Iniciar loop de verificação de tempo (Alarme)
+        setInterval(checkTimeForAlarm, 60000); // Checa a cada minuto
+        
+        // Destacar o horário atual imediatamente
+        highlightCurrentTime();
+        setInterval(highlightCurrentTime, 60000);
+    });
+
+    /**
+     * RENDERIZAÇÃO DA INTERFACE
+     */
+    function renderTimeline() {
+        const container = document.getElementById('timeline-container');
+        container.innerHTML = '';
+
+        timeSlots.forEach((time, index) => {
+            // Calcular horário final do slot (ex: 00:00 - 00:30)
+            let [h, m] = time.split(':').map(Number);
+            let endM = m + 30;
+            let endH = h;
+            if (endM >= 60) { endM = 0; endH = h + 1; }
+            if (endH >= 24) endH = 0;
+            const endTime = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+
+            const savedValue = diaryData[time] || null;
+
+            const div = document.createElement('div');
+            div.className = 'time-slot';
+            div.id = `slot-${time.replace(':', '-')}`;
+            
+            div.innerHTML = `
+                <div class="time-label">
+                    <span>${time} - ${endTime}</span>
+                    <span class="status-badge" style="display: ${savedValue ? 'block' : 'none'}">Preenchido</span>
+                </div>
+                <div class="options-grid">
+                    <button class="opt-btn ${savedValue === 'ON' ? 'selected' : ''}" onclick="setStatus('${time}', 'ON')">
+                        <span class="icon">😊</span> ON (Bem)
+                    </button>
+                    <button class="opt-btn ${savedValue === 'DYS' ? 'selected' : ''}" onclick="setStatus('${time}', 'DYS')">
+                        <span class="icon">〰️</span> ON c/ Discinesia
+                    </button>
+                    <button class="opt-btn ${savedValue === 'OFF' ? 'selected' : ''}" onclick="setStatus('${time}', 'OFF')">
+                        <span class="icon">🐢</span> OFF (Travado)
+                    </button>
+                    <button class="opt-btn ${savedValue === 'SLEEP' ? 'selected' : ''}" onclick="setStatus('${time}', 'SLEEP')">
+                        <span class="icon">😴</span> Dormindo
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    /**
+     * LÓGICA DE PREENCHIMENTO
+     [cite_start]* [cite: 436] - Apenas uma resposta por período
+     */
+    function setStatus(time, status) {
+        diaryData[time] = status;
+        saveData();
+        
+        // Atualizar UI visualmente sem recarregar tudo
+        const slotId = `slot-${time.replace(':', '-')}`;
+        const slotEl = document.getElementById(slotId);
+        const buttons = slotEl.querySelectorAll('.opt-btn');
+        
+        buttons.forEach(btn => {
+            btn.classList.remove('selected');
+            if(btn.innerHTML.includes(getLabelForStatus(status))) {
+               // Fallback simples se o texto bater, mas melhor usar o clique
+            }
+        });
+        
+        // Maneira mais robusta de atualizar classe selected:
+        // Re-renderizar este slot específico ou manipular classes via evento
+        // Simplificando: recarrega classes baseadas no novo estado
+        renderTimeline(); 
+        
+        // Feedback sonoro leve (opcional)
+        // navigator.vibrate(50);
+    }
+
+    function getLabelForStatus(status) {
+        if (status === 'ON') return 'ON (Bem)';
+        if (status === 'DYS') return 'ON c/ Discinesia';
+        if (status === 'OFF') return 'OFF (Travado)';
+        if (status === 'SLEEP') return 'Dormindo';
+        return '';
+    }
+
+    /**
+     * PERSISTÊNCIA DE DADOS
+     */
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryData));
+    }
+
+    function loadData() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            diaryData = JSON.parse(stored);
+        }
+    }
+
+    function resetData() {
+        if(confirm("Tem certeza que deseja apagar todos os dados de hoje?")) {
+            localStorage.removeItem(STORAGE_KEY);
+            diaryData = {};
+            renderTimeline();
+            alert("Dados limpos.");
+        }
+    }
+
+    /**
+     * ALARMES E NOTIFICAÇÕES
+     */
+    function requestNotificationPermission() {
+        if (!("Notification" in window)) {
+            alert("Este navegador não suporta notificações de sistema.");
+            return;
+        }
+        Notification.requestPermission().then(permission => {
+            checkNotificationStatus();
+            if (permission === "granted") {
+                new Notification("Diário Motor", { body: "Alarmes ativados! Vamos te avisar a cada 30 min." });
+            }
+        });
+    }
+
+    function checkNotificationStatus() {
+        const panel = document.getElementById('permission-panel');
+        if (Notification.permission === "granted") {
+            panel.style.display = 'none';
+        } else {
+            panel.style.display = 'block';
+        }
+    }
+
+    function checkTimeForAlarm() {
+        const now = new Date();
+        const minutes = now.getMinutes();
+        
+        // Alarme toca na hora cheia (00) e meia hora (30)
+        // Adicionamos uma margem de erro caso o navegador "durma" e acorde no minuto 01 ou 31
+        if (minutes === 0 || minutes === 30) {
+            triggerAlarm();
+        }
+    }
+
+    function triggerAlarm() {
+        // Tocar som
+        const audio = document.getElementById('alarm-sound');
+        audio.play().catch(e => console.log("Audio play blocked (user needs to interact first)"));
+
+        // Enviar Notificação
+        if (Notification.permission === "granted") {
+            const notif = new Notification("Hora de Preencher o Diário", {
+                body: "Como você se sentiu nos últimos 30 minutos?",
+                icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png" // Ícone genérico de saúde
+            });
+            notif.onclick = function() {
+                window.focus();
+                scrollToCurrent();
+            };
+        }
+    }
+
+    /**
+     * UTILITÁRIOS UI
+     */
+    function highlightCurrentTime() {
+        const now = new Date();
+        const h = now.getHours();
+        const m = now.getMinutes();
+        
+        // Definir qual slot é o atual
+        // Se são 14:15, o slot é 14:00. Se 14:45, o slot é 14:30.
+        const slotM = m < 30 ? '00' : '30';
+        const slotH = String(h).padStart(2, '0');
+        const currentId = `slot-${slotH}-${slotM}`;
+
+        // Remover destaque anterior
+        document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('active-now'));
+
+        // Adicionar novo destaque
+        const el = document.getElementById(currentId);
+        if (el) {
+            el.classList.add('active-now');
+        }
+    }
+
+    function scrollToCurrent() {
+        const active = document.querySelector('.active-now');
+        if (active) {
+            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            // Fallback: tenta calcular se highlight ainda não rodou
+            highlightCurrentTime();
+            setTimeout(() => {
+                const activeDelay = document.querySelector('.active-now');
+                if(activeDelay) activeDelay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    /**
+     * EXPORTAÇÃO (CSV)
+     */
+    function exportCSV() {
+        const patientId = document.getElementById('patient-id').value;
+        const dateStr = new Date().toLocaleDateString('pt-BR');
+        
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Patient_ID,Date,Time_Start,Time_End,Status,Status_Code\n";
+
+        timeSlots.forEach(time => {
+            const status = diaryData[time] || "MISSING";
+            
+            // Recalcular fim para o CSV ficar bonito
+            let [h, m] = time.split(':').map(Number);
+            let endM = m + 30;
+            let endH = h;
+            if (endM >= 60) { endM = 0; endH = h + 1; }
+            const endTime = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+
+            // Códigos numéricos para facilitar análise estatística
+            // 0=Sleep, 1=OFF, 2=ON, 3=DYS (Exemplo de codificação comum)
+            let code = "";
+            if (status === 'SLEEP') code = 0;
+            if (status === 'OFF') code = 1;
+            if (status === 'ON') code = 2;
+            if (status === 'DYS') code = 3;
+
+            csvContent += `${patientId},${dateStr},${time},${endTime},${status},${code}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Diario_Motor_${patientId}_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+</body>
+</html>
