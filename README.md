@@ -28,7 +28,7 @@ O **Diário Motor** é uma ferramenta digital desenvolvida para auxiliar pacient
 - **CSV**: Para análise em planilhas
 - **JSON**: Para integração com outros sistemas
 - **PDF**: Relatório formatado para impressão
-- **E-mail**: Envio automático ao médico via EmailJS
+- **E-mail**: Envio automático ao médico via FormSubmit (gratuito e ilimitado)
 
 ### 💾 Armazenamento Local
 - Dados salvos no navegador (LocalStorage)
@@ -66,45 +66,29 @@ Preencha as seguintes informações:
 - Revise o resumo estatístico
 - Envie o relatório por e-mail ou baixe os arquivos localmente
 
-## 🔧 Configuração do EmailJS
+## 🔧 Configuração do Envio de E-mail (FormSubmit)
 
-Para habilitar o envio automático de e-mails, configure o EmailJS:
+O aplicativo usa o **FormSubmit.co** para envio de e-mails, que é **gratuito e sem limites**.
 
-### Passo 1: Criar Conta no EmailJS
-1. Acesse [emailjs.com](https://www.emailjs.com/)
-2. Crie uma conta gratuita
-3. Configure um serviço de e-mail (Gmail, Outlook, etc.)
+### Como Funciona
 
-### Passo 2: Criar Template de E-mail
-Crie um template com os seguintes parâmetros:
-- `to_email`: E-mail de destino
-- `patient_name`: Nome do paciente
-- `patient_cpf`: CPF do paciente
-- `date`: Data do relatório
-- `total_evaluations`: Total de avaliações
-- `csv_content`: Anexo CSV (base64)
-- `json_content`: Anexo JSON (base64)
-- `pdf_content`: Anexo PDF (base64)
+1. **Primeira vez**: Ao enviar o primeiro relatório para um e-mail, o FormSubmit envia uma mensagem de confirmação
+2. **Confirmação**: O destinatário clica no link de confirmação (apenas uma vez)
+3. **Pronto**: Após confirmar, todos os envios futuros funcionam automaticamente
 
-### Passo 3: Atualizar as Credenciais
+### O que é Enviado
 
-No arquivo HTML, localize a seção `EMAILJS_CONFIG` e substitua pelos seus valores:
+- **Por E-mail**: Resumo formatado com dados do paciente e estatísticas
+- **Download Local**: Arquivos CSV, JSON e PDF são baixados automaticamente no dispositivo
 
-```javascript
-const EMAILJS_CONFIG = {
-    publicKey: 'SUA_PUBLIC_KEY',      // Da sua conta EmailJS
-    serviceId: 'SEU_SERVICE_ID',      // ID do serviço configurado
-    templateId: 'SEU_TEMPLATE_ID'     // ID do template criado
-};
-```
+### Vantagens sobre o EmailJS (anterior)
 
-### Passo 4: Descomentar Inicialização
-
-Descomente a linha de inicialização do EmailJS:
-
-```javascript
-emailjs.init(EMAILJS_CONFIG.publicKey);
-```
+| Característica | EmailJS | FormSubmit |
+|----------------|---------|------------|
+| Limite mensal | 200 emails | **Ilimitado** |
+| Configuração | Complexa | **Automática** |
+| Cadastro | Necessário | **Não precisa** |
+| Custo | Gratuito até 200 | **Totalmente gratuito** |
 
 ## 💻 Tecnologias Utilizadas
 
@@ -116,7 +100,9 @@ emailjs.init(EMAILJS_CONFIG.publicKey);
 ### Bibliotecas Externas
 - **jsPDF** (v2.5.1): Geração de arquivos PDF
 - **jsPDF AutoTable** (v3.5.29): Criação de tabelas em PDF
-- **EmailJS** (v3): Envio de e-mails sem back-end
+
+### Serviços Externos
+- **FormSubmit.co**: Envio de e-mails gratuito e ilimitado (sem necessidade de back-end)
 
 ### APIs do Navegador
 - **LocalStorage API**: Persistência de dados
@@ -210,7 +196,7 @@ Os dados permitem ao médico:
 1. **Alarmes em Segundo Plano**: Navegadores móveis podem suspender alarmes quando o app está inativo
 2. **Notificações**: Requerem permissão do usuário e podem não funcionar em todos os dispositivos
 3. **HTTPS**: Algumas funcionalidades (Wake Lock, Service Workers) requerem HTTPS em produção
-4. **EmailJS**: Serviço gratuito tem limite mensal de envios
+4. **Confirmação de E-mail**: Na primeira vez, o destinatário precisa confirmar o e-mail clicando em um link
 
 ## 🔮 Desenvolvimentos Futuros
 
@@ -249,5 +235,5 @@ Esta aplicação é uma ferramenta de auxílio diagnóstico e monitoramento. Nã
 
 ---
 
-**Versão**: 2.0  
-**Última Atualização**: Fevereiro 2025
+**Versão**: 2.1
+**Última Atualização**: Fevereiro 2026

@@ -9,9 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
-    <!-- EmailJS para envio de email -->
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-
     <style>
         :root {
             --on-color: #28a745;
@@ -926,21 +923,24 @@
 
 <script>
 /**
- * CONFIGURAÇÃO DO EMAILJS
- * Para funcionar, você precisa:
- * 1. Criar conta em https://www.emailjs.com/
- * 2. Configurar um serviço de email (Gmail, Outlook, etc)
- * 3. Criar um template de email
- * 4. Substituir os valores abaixo pelos seus
+ * CONFIGURAÇÃO DO FORMSUBMIT (https://formsubmit.co)
+ *
+ * FormSubmit é um serviço GRATUITO e SEM LIMITES para envio de emails.
+ *
+ * Como configurar:
+ * 1. Na primeira vez que enviar, você receberá um email de confirmação
+ * 2. Clique no link de confirmação
+ * 3. Após confirmar, todos os envios para aquele email funcionarão automaticamente
+ *
+ * Vantagens sobre EmailJS:
+ * - Gratuito e sem limite de envios
+ * - Não precisa criar conta
+ * - Configuração automática
  */
-const EMAILJS_CONFIG = {
-    publicKey: 'LrOGombDh7RqRIyOZ',      // Substitua pela sua Public Key
-    serviceId: 'service_23zrnev',       // Substitua pelo seu Service ID
-    templateId: 'template_xta9xfs'      // Substitua pelo seu Template ID
+const FORMSUBMIT_CONFIG = {
+    // Endpoint base do FormSubmit
+    endpoint: 'https://formsubmit.co/ajax/'
 };
-
-// Inicializar EmailJS (descomentar quando configurar)
-// emailjs.init(EMAILJS_CONFIG.publicKey);
 
 /**
  * ESTADO DA APLICAÇÃO
@@ -1339,6 +1339,7 @@ function closeFinishModal() {
 
 /**
  * FINALIZAR DIA E ENVIAR EMAIL
+ * Nova versão usando FormSubmit (gratuito e sem limites)
  */
 async function finishDayAndSend() {
     const email = document.getElementById('finish-email').value.trim();
@@ -1350,103 +1351,217 @@ async function finishDayAndSend() {
 
     const statusEl = document.getElementById('sending-status');
     statusEl.className = 'sending-status loading';
-    statusEl.textContent = 'Gerando arquivos e enviando...';
+    statusEl.textContent = 'Gerando arquivos e enviando relatório...';
 
     try {
-        // Gerar os arquivos
-        const csvContent = generateCSVContent();
-        const jsonContent = generateJSONContent();
-        const pdfBlob = await generatePDFContent();
+        // Primeiro, baixar os arquivos automaticamente
+        statusEl.textContent = 'Baixando arquivos localmente...';
+        await downloadAllFiles();
 
-        // Tentar enviar por EmailJS
-        const emailSent = await sendEmail(email, csvContent, jsonContent, pdfBlob);
+        // Depois, enviar email com resumo via FormSubmit
+        statusEl.textContent = 'Enviando email com resumo...';
+        const emailSent = await sendEmail(email);
 
         if (emailSent) {
             statusEl.className = 'sending-status success';
-            statusEl.textContent = 'Relatório enviado com sucesso!';
+            statusEl.innerHTML = `
+                <strong>Concluído com sucesso!</strong><br>
+                <small>
+                    - Arquivos baixados no dispositivo<br>
+                    - Email com resumo enviado para ${email}
+                </small>
+            `;
 
             // Marcar sessão como finalizada
             appState.session.isActive = false;
             appState.session.endTime = new Date().toISOString();
             saveState();
 
-            // Oferecer download local também
+            // Reiniciar para nova sessão
             setTimeout(() => {
-                if (confirm('Deseja também baixar os arquivos localmente?')) {
-                    downloadCSV();
-                    downloadJSON();
-                    downloadPDF();
+                if (confirm('Deseja iniciar um novo dia de monitoramento?')) {
+                    resetForNewDay();
                 }
-
-                // Reiniciar para nova sessão
-                setTimeout(() => {
-                    if (confirm('Deseja iniciar um novo dia de monitoramento?')) {
-                        resetForNewDay();
-                    }
-                }, 1000);
-            }, 2000);
+            }, 3000);
         } else {
-            throw new Error('Falha no envio');
+            // Email falhou, mas arquivos foram baixados
+            statusEl.className = 'sending-status error';
+            statusEl.innerHTML = `
+                <strong>Arquivos baixados com sucesso!</strong><br>
+                <small>
+                    Nota: O email não pôde ser enviado.<br>
+                    Na primeira vez, você precisa confirmar o email.<br>
+                    Verifique sua caixa de entrada para o link de confirmação do FormSubmit.
+                </small>
+            `;
+
+            // Marcar sessão como finalizada mesmo assim
+            appState.session.isActive = false;
+            appState.session.endTime = new Date().toISOString();
+            saveState();
         }
 
     } catch (error) {
-        console.error('Erro ao enviar:', error);
+        console.error('Erro ao finalizar:', error);
         statusEl.className = 'sending-status error';
-        statusEl.textContent = 'Erro ao enviar. Os arquivos serão baixados localmente.';
-
-        // Fallback: baixar arquivos localmente
-        setTimeout(() => {
-            downloadCSV();
-            downloadJSON();
-            downloadPDF();
-
-            alert('Os arquivos foram baixados. Por favor, envie-os manualmente por email.');
-        }, 2000);
+        statusEl.innerHTML = `
+            <strong>Erro ao processar</strong><br>
+            <small>Tente novamente ou baixe os arquivos manualmente nas configurações.</small>
+        `;
     }
 }
 
 /**
- * ENVIAR EMAIL
+ * BAIXAR TODOS OS ARQUIVOS
  */
-async function sendEmail(toEmail, csvContent, jsonContent, pdfBlob) {
-    // Verificar se EmailJS está configurado
-    if (EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
-        console.log('EmailJS não configurado. Usando fallback de download.');
-        return false;
-    }
+async function downloadAllFiles() {
+    // Pequeno delay entre downloads para evitar bloqueio do navegador
+    downloadCSV();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    downloadJSON();
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await downloadPDF();
+}
 
+/**
+ * ENVIAR EMAIL VIA FORMSUBMIT
+ * FormSubmit.co é gratuito e sem limites de envio
+ */
+async function sendEmail(toEmail) {
     try {
-        // Converter para base64 para envio
-        const csvBase64 = btoa(unescape(encodeURIComponent(csvContent)));
-        const jsonBase64 = btoa(unescape(encodeURIComponent(jsonContent)));
-
-        // Converter PDF blob para base64
-        const pdfBase64 = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.readAsDataURL(pdfBlob);
-        });
-
-        const templateParams = {
-            to_email: toEmail,
-            patient_name: appState.patient.name,
-            patient_cpf: appState.patient.cpf,
-            date: new Date().toLocaleDateString('pt-BR'),
-            total_evaluations: appState.evaluations.length,
-            csv_content: csvBase64,
-            json_content: jsonBase64,
-            pdf_content: pdfBase64
+        // Calcular estatísticas
+        const stats = {
+            ON: appState.evaluations.filter(e => e.status === 'ON').length,
+            DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
+            OFF: appState.evaluations.filter(e => e.status === 'OFF').length
         };
 
-        await emailjs.send(
-            EMAILJS_CONFIG.serviceId,
-            EMAILJS_CONFIG.templateId,
-            templateParams
-        );
+        const total = appState.evaluations.length;
 
-        return true;
+        // Calcular duração da sessão
+        let duration = 'N/A';
+        if (appState.session.startTime) {
+            const start = new Date(appState.session.startTime);
+            const end = new Date();
+            const diffMs = end - start;
+            const hours = Math.floor(diffMs / 3600000);
+            const minutes = Math.floor((diffMs % 3600000) / 60000);
+            duration = `${hours}h ${minutes}min`;
+        }
+
+        // Criar tabela HTML com as avaliações
+        const evalRows = appState.evaluations.map(eval => {
+            const typeLabel = eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Automática';
+            const statusColor = eval.status === 'ON' ? '#28a745' : eval.status === 'DYS' ? '#ffc107' : '#dc3545';
+            return `<tr>
+                <td style="padding: 8px; border: 1px solid #ddd;">${eval.dateFormatted}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${eval.timeFormatted}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; background-color: ${statusColor}; color: ${eval.status === 'DYS' ? '#000' : '#fff'}; font-weight: bold;">${eval.status}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${typeLabel}</td>
+            </tr>`;
+        }).join('');
+
+        // Montar mensagem HTML completa
+        const htmlMessage = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #0056b3; color: white; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">Diário Motor - Parkinson</h1>
+                    <p style="margin: 10px 0 0 0;">Relatório Diário de Avaliações</p>
+                </div>
+
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Dados do Paciente</h2>
+                    <p><strong>Nome:</strong> ${appState.patient.name}</p>
+                    <p><strong>CPF:</strong> ${appState.patient.cpf}</p>
+                    <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Duração do monitoramento:</strong> ${duration}</p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Resumo</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <tr>
+                            <td style="padding: 15px; text-align: center; background: #28a745; color: white; border-radius: 8px 0 0 8px;">
+                                <div style="font-size: 24px; font-weight: bold;">${stats.ON}</div>
+                                <div>ON</div>
+                                <div style="font-size: 12px;">(${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)</div>
+                            </td>
+                            <td style="padding: 15px; text-align: center; background: #ffc107; color: #000;">
+                                <div style="font-size: 24px; font-weight: bold;">${stats.DYS}</div>
+                                <div>Discinesia</div>
+                                <div style="font-size: 12px;">(${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)</div>
+                            </td>
+                            <td style="padding: 15px; text-align: center; background: #dc3545; color: white; border-radius: 0 8px 8px 0;">
+                                <div style="font-size: 24px; font-weight: bold;">${stats.OFF}</div>
+                                <div>OFF</div>
+                                <div style="font-size: 12px;">(${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)</div>
+                            </td>
+                        </tr>
+                    </table>
+                    <p style="text-align: center;"><strong>Total de avaliações: ${total}</strong></p>
+                </div>
+
+                <div style="padding: 20px; background: #f9f9f9;">
+                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Avaliações Detalhadas</h2>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #0056b3; color: white;">
+                                <th style="padding: 10px; border: 1px solid #0056b3;">Data</th>
+                                <th style="padding: 10px; border: 1px solid #0056b3;">Hora</th>
+                                <th style="padding: 10px; border: 1px solid #0056b3;">Estado</th>
+                                <th style="padding: 10px; border: 1px solid #0056b3;">Tipo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${evalRows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="padding: 20px; background: #e8f4fd; text-align: center;">
+                    <p style="margin: 0; color: #666; font-size: 12px;">
+                        Os arquivos CSV, JSON e PDF foram baixados no dispositivo do paciente.
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">
+                        Gerado em ${new Date().toLocaleString('pt-BR')}
+                    </p>
+                </div>
+            </div>
+        `;
+
+        // Enviar via FormSubmit
+        const response = await fetch(FORMSUBMIT_CONFIG.endpoint + toEmail, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                _subject: `Diário Motor - Relatório de ${appState.patient.name} - ${new Date().toLocaleDateString('pt-BR')}`,
+                _template: 'box',
+                Paciente: appState.patient.name,
+                CPF: appState.patient.cpf,
+                Data: new Date().toLocaleDateString('pt-BR'),
+                'Total de Avaliações': total,
+                'Resumo ON': `${stats.ON} (${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)`,
+                'Resumo Discinesia': `${stats.DYS} (${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)`,
+                'Resumo OFF': `${stats.OFF} (${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)`,
+                'Duração': duration,
+                _captcha: 'false',
+                _autoresponse: 'Relatório do Diário Motor recebido com sucesso!'
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success === 'true' || result.success === true) {
+            return true;
+        } else {
+            console.error('FormSubmit response:', result);
+            return false;
+        }
     } catch (error) {
-        console.error('Erro EmailJS:', error);
+        console.error('Erro ao enviar email:', error);
         return false;
     }
 }

@@ -1,0 +1,94 @@
+================================================================================
+              CONFIGURACAO DO ENVIO DE EMAIL - FORMSUBMIT
+================================================================================
+
+O Diario Motor agora usa o FormSubmit.co para envio de emails.
+
+VANTAGENS:
+- GRATUITO e SEM LIMITES de envio (substitui o EmailJS que tinha limite de 200/mes)
+- Nao precisa criar conta
+- Configuracao automatica
+- Funciona direto do navegador
+
+================================================================================
+                         COMO FUNCIONA
+================================================================================
+
+1. PRIMEIRA VEZ QUE ENVIAR:
+   - O FormSubmit envia um email de confirmacao para o endereco de destino
+   - O destinatario deve clicar no link de confirmacao
+   - Isso so precisa ser feito UMA vez por endereco de email
+
+2. APOS CONFIRMAR:
+   - Todos os envios para aquele email funcionam automaticamente
+   - Nao e necessaria mais nenhuma configuracao
+
+================================================================================
+                    O QUE E ENVIADO NO EMAIL
+================================================================================
+
+O email enviado contem:
+- Nome do paciente
+- CPF
+- Data do relatorio
+- Resumo das avaliacoes (quantidade de ON, OFF e Discinesia)
+- Porcentagens de cada estado
+- Duracao do monitoramento
+
+NOTA: Os arquivos detalhados (CSV, JSON e PDF) sao baixados automaticamente
+no dispositivo do paciente. O email serve como notificacao e resumo rapido.
+
+================================================================================
+                        ARQUIVOS GERADOS
+================================================================================
+
+Ao finalizar o dia, tres arquivos sao baixados automaticamente:
+
+1. CSV (DiarioMotor_CPF_DATA.csv)
+   - Formato tabular para Excel/Google Sheets
+   - Colunas: Nome, CPF, Data, Hora, Timestamp, Status, Status_Codigo, Tipo_Avaliacao
+
+2. JSON (DiarioMotor_CPF_DATA.json)
+   - Dados estruturados completos
+   - Inclui resumo estatistico e todas as avaliacoes
+
+3. PDF (DiarioMotor_CPF_DATA.pdf)
+   - Relatorio visual formatado
+   - Pronto para impressao ou visualizacao
+
+================================================================================
+                         SOLUCAO DE PROBLEMAS
+================================================================================
+
+PROBLEMA: Email nao esta chegando
+SOLUCAO: Verifique se o email de destino foi confirmado. Na primeira vez,
+         o FormSubmit envia um email pedindo confirmacao.
+
+PROBLEMA: Arquivos nao estao sendo baixados
+SOLUCAO: Verifique se o navegador permite downloads multiplos. Alguns
+         navegadores podem bloquear downloads automaticos.
+
+PROBLEMA: Erro ao enviar
+SOLUCAO: Verifique a conexao com a internet. O FormSubmit precisa de
+         conexao para funcionar.
+
+================================================================================
+                    COMPARACAO COM EMAILJS (ANTERIOR)
+================================================================================
+
+| Caracteristica      | EmailJS (antigo)    | FormSubmit (atual)     |
+|---------------------|---------------------|------------------------|
+| Limite mensal       | 200 emails          | ILIMITADO              |
+| Custo               | Gratuito ate 200    | Totalmente gratuito    |
+| Cadastro necessario | Sim                 | Nao                    |
+| Configuracao        | Complexa (template) | Automatica             |
+| Anexos no email     | Sim (com limites)   | Nao (download local)   |
+
+================================================================================
+                           SUPORTE
+================================================================================
+
+FormSubmit: https://formsubmit.co/
+Documentacao: https://formsubmit.co/documentation
+
+================================================================================
