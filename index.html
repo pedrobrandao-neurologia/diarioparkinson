@@ -905,15 +905,18 @@
         </p>
 
         <div class="email-section">
-            <p style="font-weight: 600; margin-bottom: 10px;">Enviar relatório por e-mail:</p>
+            <p style="font-weight: 600; margin-bottom: 5px;">E-mail do médico:</p>
+            <p style="color: #666; font-size: 0.8rem; margin-bottom: 10px;">
+                O relatório completo será enviado com todos os dados.
+            </p>
             <input type="email" class="email-input" id="finish-email" placeholder="medico@exemplo.com">
 
-            <button class="btn-action btn-manual" onclick="finishDayAndSend()">
-                Enviar e Finalizar
+            <button class="btn-action btn-manual" onclick="finishDayAndSend()" style="font-size: 1.1rem; padding: 18px;">
+                ENVIAR RELATÓRIO
             </button>
 
             <button class="btn-action" style="background: #6c757d; color: white;" onclick="closeFinishModal()">
-                Voltar ao Diário
+                Continuar Registrando
             </button>
 
             <div class="sending-status" id="sending-status"></div>
@@ -1339,7 +1342,7 @@ function closeFinishModal() {
 
 /**
  * FINALIZAR DIA E ENVIAR EMAIL
- * Nova versão usando FormSubmit (gratuito e sem limites)
+ * Envia relatório completo por email (dados CSV incluídos no corpo)
  */
 async function finishDayAndSend() {
     const email = document.getElementById('finish-email').value.trim();
@@ -1351,25 +1354,16 @@ async function finishDayAndSend() {
 
     const statusEl = document.getElementById('sending-status');
     statusEl.className = 'sending-status loading';
-    statusEl.textContent = 'Gerando arquivos e enviando relatório...';
+    statusEl.textContent = 'Enviando relatório para o médico...';
 
     try {
-        // Primeiro, baixar os arquivos automaticamente
-        statusEl.textContent = 'Baixando arquivos localmente...';
-        await downloadAllFiles();
-
-        // Depois, enviar email com resumo via FormSubmit
-        statusEl.textContent = 'Enviando email com resumo...';
         const emailSent = await sendEmail(email);
 
         if (emailSent) {
             statusEl.className = 'sending-status success';
             statusEl.innerHTML = `
-                <strong>Concluído com sucesso!</strong><br>
-                <small>
-                    - Arquivos baixados no dispositivo<br>
-                    - Email com resumo enviado para ${email}
-                </small>
+                <strong>Relatório enviado com sucesso!</strong><br>
+                <small>O médico receberá todos os dados por email.</small>
             `;
 
             // Marcar sessão como finalizada
@@ -1384,48 +1378,31 @@ async function finishDayAndSend() {
                 }
             }, 3000);
         } else {
-            // Email falhou, mas arquivos foram baixados
+            // Email falhou - provavelmente primeira vez (precisa confirmar)
             statusEl.className = 'sending-status error';
             statusEl.innerHTML = `
-                <strong>Arquivos baixados com sucesso!</strong><br>
+                <strong>Atenção: Confirmação necessária</strong><br>
                 <small>
-                    Nota: O email não pôde ser enviado.<br>
-                    Na primeira vez, você precisa confirmar o email.<br>
-                    Verifique sua caixa de entrada para o link de confirmação do FormSubmit.
+                    Na primeira vez, o médico precisa confirmar o email.<br>
+                    Um link de confirmação foi enviado para: <strong>${email}</strong><br>
+                    Após confirmar, tente enviar novamente.
                 </small>
             `;
-
-            // Marcar sessão como finalizada mesmo assim
-            appState.session.isActive = false;
-            appState.session.endTime = new Date().toISOString();
-            saveState();
         }
 
     } catch (error) {
         console.error('Erro ao finalizar:', error);
         statusEl.className = 'sending-status error';
         statusEl.innerHTML = `
-            <strong>Erro ao processar</strong><br>
-            <small>Tente novamente ou baixe os arquivos manualmente nas configurações.</small>
+            <strong>Erro ao enviar</strong><br>
+            <small>Verifique sua conexão com a internet e tente novamente.</small>
         `;
     }
 }
 
 /**
- * BAIXAR TODOS OS ARQUIVOS
- */
-async function downloadAllFiles() {
-    // Pequeno delay entre downloads para evitar bloqueio do navegador
-    downloadCSV();
-    await new Promise(resolve => setTimeout(resolve, 500));
-    downloadJSON();
-    await new Promise(resolve => setTimeout(resolve, 500));
-    await downloadPDF();
-}
-
-/**
  * ENVIAR EMAIL VIA FORMSUBMIT
- * FormSubmit.co é gratuito e sem limites de envio
+ * Envia relatório completo com dados CSV no corpo do email
  */
 async function sendEmail(toEmail) {
     try {
@@ -1461,75 +1438,20 @@ async function sendEmail(toEmail) {
             </tr>`;
         }).join('');
 
-        // Montar mensagem HTML completa
-        const htmlMessage = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #0056b3; color: white; padding: 20px; text-align: center;">
-                    <h1 style="margin: 0;">Diário Motor - Parkinson</h1>
-                    <p style="margin: 10px 0 0 0;">Relatório Diário de Avaliações</p>
-                </div>
+        // Gerar CSV completo como texto
+        const csvContent = generateCSVContent();
 
-                <div style="padding: 20px; background: #f9f9f9;">
-                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Dados do Paciente</h2>
-                    <p><strong>Nome:</strong> ${appState.patient.name}</p>
-                    <p><strong>CPF:</strong> ${appState.patient.cpf}</p>
-                    <p><strong>Data:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-                    <p><strong>Duração do monitoramento:</strong> ${duration}</p>
-                </div>
+        // Formatar CSV para exibição (separar linhas)
+        const csvLines = csvContent.split('\n').filter(line => line.trim());
+        const csvFormatted = csvLines.join('\n');
 
-                <div style="padding: 20px;">
-                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Resumo</h2>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-                        <tr>
-                            <td style="padding: 15px; text-align: center; background: #28a745; color: white; border-radius: 8px 0 0 8px;">
-                                <div style="font-size: 24px; font-weight: bold;">${stats.ON}</div>
-                                <div>ON</div>
-                                <div style="font-size: 12px;">(${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)</div>
-                            </td>
-                            <td style="padding: 15px; text-align: center; background: #ffc107; color: #000;">
-                                <div style="font-size: 24px; font-weight: bold;">${stats.DYS}</div>
-                                <div>Discinesia</div>
-                                <div style="font-size: 12px;">(${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)</div>
-                            </td>
-                            <td style="padding: 15px; text-align: center; background: #dc3545; color: white; border-radius: 0 8px 8px 0;">
-                                <div style="font-size: 24px; font-weight: bold;">${stats.OFF}</div>
-                                <div>OFF</div>
-                                <div style="font-size: 12px;">(${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)</div>
-                            </td>
-                        </tr>
-                    </table>
-                    <p style="text-align: center;"><strong>Total de avaliações: ${total}</strong></p>
-                </div>
+        // Criar lista de avaliações em texto simples para o corpo do email
+        const evalListText = appState.evaluations.map(eval => {
+            const typeLabel = eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Auto';
+            return `${eval.dateFormatted} ${eval.timeFormatted} | ${eval.status} | ${typeLabel}`;
+        }).join('\n');
 
-                <div style="padding: 20px; background: #f9f9f9;">
-                    <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Avaliações Detalhadas</h2>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #0056b3; color: white;">
-                                <th style="padding: 10px; border: 1px solid #0056b3;">Data</th>
-                                <th style="padding: 10px; border: 1px solid #0056b3;">Hora</th>
-                                <th style="padding: 10px; border: 1px solid #0056b3;">Estado</th>
-                                <th style="padding: 10px; border: 1px solid #0056b3;">Tipo</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${evalRows}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div style="padding: 20px; background: #e8f4fd; text-align: center;">
-                    <p style="margin: 0; color: #666; font-size: 12px;">
-                        Os arquivos CSV, JSON e PDF foram baixados no dispositivo do paciente.
-                    </p>
-                    <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">
-                        Gerado em ${new Date().toLocaleString('pt-BR')}
-                    </p>
-                </div>
-            </div>
-        `;
-
-        // Enviar via FormSubmit
+        // Enviar via FormSubmit com dados completos
         const response = await fetch(FORMSUBMIT_CONFIG.endpoint + toEmail, {
             method: 'POST',
             headers: {
@@ -1537,18 +1459,27 @@ async function sendEmail(toEmail) {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                _subject: `Diário Motor - Relatório de ${appState.patient.name} - ${new Date().toLocaleDateString('pt-BR')}`,
-                _template: 'box',
-                Paciente: appState.patient.name,
-                CPF: appState.patient.cpf,
-                Data: new Date().toLocaleDateString('pt-BR'),
-                'Total de Avaliações': total,
-                'Resumo ON': `${stats.ON} (${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)`,
-                'Resumo Discinesia': `${stats.DYS} (${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)`,
-                'Resumo OFF': `${stats.OFF} (${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)`,
-                'Duração': duration,
+                _subject: `Diário Motor - ${appState.patient.name} - ${new Date().toLocaleDateString('pt-BR')}`,
+                _template: 'table',
                 _captcha: 'false',
-                _autoresponse: 'Relatório do Diário Motor recebido com sucesso!'
+
+                // Dados do paciente
+                '1. PACIENTE': appState.patient.name,
+                '2. CPF': appState.patient.cpf,
+                '3. DATA': new Date().toLocaleDateString('pt-BR'),
+                '4. DURAÇÃO': duration,
+
+                // Resumo estatístico
+                '5. TOTAL AVALIAÇÕES': total,
+                '6. ON (Bem)': `${stats.ON} avaliações (${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)`,
+                '7. DISCINESIA': `${stats.DYS} avaliações (${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)`,
+                '8. OFF (Travado)': `${stats.OFF} avaliações (${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)`,
+
+                // Lista de avaliações
+                '9. AVALIAÇÕES DETALHADAS': '\n' + evalListText,
+
+                // CSV completo para copiar
+                '10. DADOS CSV (copiar e salvar como .csv)': '\n' + csvFormatted
             })
         });
 
