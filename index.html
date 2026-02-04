@@ -4,14 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Diário Motor - Parkinson</title>
+
+    <!-- jsPDF para geração de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- EmailJS para envio de email -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
     <style>
         :root {
-            --on-color: #28a745; /* Verde - Bom */
-            --dys-color: #ffc107; /* Amarelo - Movimentos */
-            --off-color: #dc3545; /* Vermelho - Ruim */
-            --sleep-color: #6c757d; /* Cinza - Dormindo */
+            --on-color: #28a745;
+            --dys-color: #ffc107;
+            --off-color: #dc3545;
+            --sleep-color: #6c757d;
             --bg-color: #f4f6f9;
             --text-color: #333;
+            --primary-color: #0056b3;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -20,525 +33,1699 @@
             color: var(--text-color);
             margin: 0;
             padding: 0;
-            padding-bottom: 80px; /* Espaço para menu fixo */
+            min-height: 100vh;
         }
 
-        /* CABEÇALHO */
-        header {
-            background-color: #0056b3;
-            color: white;
-            padding: 15px;
+        /* TELA DE CADASTRO */
+        .registration-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #0056b3 0%, #003d82 100%);
+        }
+
+        .registration-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .registration-card h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
             text-align: center;
+        }
+
+        .registration-card p {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .btn-start {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .btn-start:hover {
+            background: #003d82;
+        }
+
+        .btn-start:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* TELA PRINCIPAL DO DIÁRIO */
+        .diary-screen {
+            display: none;
+            padding-bottom: 100px;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
             position: sticky;
             top: 0;
-            z-index: 1000;
+            z-index: 100;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        h1 { margin: 0; font-size: 1.2rem; }
-        .subtitle { font-size: 0.8rem; opacity: 0.9; margin-top: 5px; }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-        /* PAINEL DE CONTROLE / INSTRUÇÕES */
-        .panel {
+        .header-info h1 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .header-info .patient-info {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        .header-status {
+            text-align: right;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* CONTROLES */
+        .controls-panel {
             background: white;
-            margin: 10px;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .alert-box {
-            background-color: #e8f4fd;
-            border-left: 4px solid #0056b3;
-            padding: 10px;
+        .time-display {
+            text-align: center;
             margin-bottom: 15px;
-            font-size: 0.9rem;
         }
 
-        .btn-permission {
-            background-color: #0056b3;
-            color: white;
-            border: none;
+        .time-display .current-time {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .time-display .current-date {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .next-alarm {
+            background: #e8f4fd;
             padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .next-alarm strong {
+            color: var(--primary-color);
+        }
+
+        .btn-action {
             width: 100%;
-            border-radius: 5px;
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
             margin-bottom: 10px;
-        }
-
-        /* GRID DO DIÁRIO */
-        .timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 10px;
-        }
-
-        .time-slot {
-            background: white;
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            border: 2px solid transparent;
             transition: all 0.3s;
         }
 
-        .time-slot.active-now {
-            border-color: #0056b3;
-            background-color: #f0f7ff;
-            box-shadow: 0 0 10px rgba(0, 86, 179, 0.3);
+        .btn-end-day {
+            background: var(--off-color);
+            color: white;
         }
 
-        .time-label {
-            font-weight: bold;
+        .btn-manual {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* LISTA DE AVALIAÇÕES */
+        .evaluations-panel {
+            background: white;
+            margin: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .evaluations-panel h2 {
+            margin: 0 0 15px 0;
             font-size: 1.1rem;
-            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
-        .status-badge {
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: #eee;
+        .eval-count {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .evaluation-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .evaluation-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            gap: 12px;
+        }
+
+        .evaluation-item:last-child {
+            border-bottom: none;
+        }
+
+        .eval-time {
+            font-weight: bold;
+            min-width: 60px;
+            color: #333;
+        }
+
+        .eval-status {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .eval-status.ON { background: var(--on-color); color: white; }
+        .eval-status.DYS { background: var(--dys-color); color: #000; }
+        .eval-status.OFF { background: var(--off-color); color: white; }
+
+        .eval-type {
+            font-size: 0.75rem;
+            color: #888;
+            margin-left: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+
+        /* MODAL DE ALARME / AVALIAÇÃO */
+        .alarm-modal {
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
 
-        /* BOTÕES DE ESTADO */
-        .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
+        .alarm-modal.active {
+            display: flex;
         }
 
-        .opt-btn {
-            border: 1px solid #ccc;
-            padding: 15px 5px;
-            border-radius: 6px;
-            font-size: 0.9rem;
+        .alarm-card {
             background: white;
-            cursor: pointer;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .alarm-icon {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        .alarm-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .alarm-subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .alarm-time {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .state-buttons {
             display: flex;
             flex-direction: column;
+            gap: 12px;
+        }
+
+        .state-btn {
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
             align-items: center;
             justify-content: center;
-            text-align: center;
-            font-weight: 600;
+            gap: 10px;
             transition: transform 0.1s;
         }
 
-        .opt-btn:active { transform: scale(0.98); }
-
-        /* Cores dos botões quando selecionados */
-        .opt-btn[data-value="ON"].selected { background-color: var(--on-color); color: white; border-color: var(--on-color); }
-        .opt-btn[data-value="DYS"].selected { background-color: var(--dys-color); color: #000; border-color: var(--dys-color); }
-        .opt-btn[data-value="OFF"].selected { background-color: var(--off-color); color: white; border-color: var(--off-color); }
-        .opt-btn[data-value="SLEEP"].selected { background-color: var(--sleep-color); color: white; border-color: var(--sleep-color); }
-
-        /* Ícones simples via texto */
-        .icon { font-size: 1.5rem; margin-bottom: 5px; display: block; }
-
-        /* EXPORTAÇÃO */
-        .export-section {
-            margin-top: 20px;
-            border-top: 1px solid #ccc;
-            padding-top: 20px;
+        .state-btn:active {
+            transform: scale(0.98);
         }
 
-        /* MENU INFERIOR FLUTUANTE */
+        .state-btn.on-btn { background: var(--on-color); color: white; }
+        .state-btn.dys-btn { background: var(--dys-color); color: #000; }
+        .state-btn.off-btn { background: var(--off-color); color: white; }
+
+        /* MODAL DE FINALIZAÇÃO */
+        .finish-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .finish-modal.active {
+            display: flex;
+        }
+
+        .finish-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-box {
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-box.on { background: rgba(40, 167, 69, 0.1); border: 2px solid var(--on-color); }
+        .stat-box.dys { background: rgba(255, 193, 7, 0.1); border: 2px solid var(--dys-color); }
+        .stat-box.off { background: rgba(220, 53, 69, 0.1); border: 2px solid var(--off-color); }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .email-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        .sending-status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .sending-status.loading {
+            display: block;
+            background: #e8f4fd;
+            color: var(--primary-color);
+        }
+
+        .sending-status.success {
+            display: block;
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--on-color);
+        }
+
+        .sending-status.error {
+            display: block;
+            background: rgba(220, 53, 69, 0.1);
+            color: var(--off-color);
+        }
+
+        /* MENU INFERIOR */
         .bottom-nav {
             position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
             background: white;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #ddd;
             display: flex;
             justify-content: space-around;
-            padding: 10px 0;
-            z-index: 1000;
+            padding: 12px 0;
+            z-index: 100;
         }
-        
+
         .nav-btn {
             background: none;
             border: none;
             font-size: 0.8rem;
-            color: #555;
+            color: #666;
             display: flex;
             flex-direction: column;
             align-items: center;
+            cursor: pointer;
+            padding: 5px 20px;
         }
-        
-        .nav-btn span { font-size: 1.2rem; }
 
-        /* Esconder abas não ativas */
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        .nav-btn.active {
+            color: var(--primary-color);
+        }
 
+        .nav-btn span {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+
+        /* TABS */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* INSTRUÇÕES */
+        .instructions-panel {
+            background: white;
+            margin: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .instructions-panel h2 {
+            margin: 0 0 15px 0;
+            color: var(--primary-color);
+        }
+
+        .state-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        .legend-color {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .legend-color.on { background: var(--on-color); }
+        .legend-color.dys { background: var(--dys-color); }
+        .legend-color.off { background: var(--off-color); }
+
+        .legend-text strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .legend-text span {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* CONFIGURAÇÕES */
+        .config-panel {
+            background: white;
+            margin: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .config-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .config-item:last-child {
+            border-bottom: none;
+        }
+
+        .config-item label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .config-item input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .btn-danger {
+            background: var(--off-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        /* Som do alarme visual */
+        .alarm-visual {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-color);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+            animation: none;
+        }
+
+        .alarm-visual.flashing {
+            animation: flash 0.5s ease-in-out 3;
+        }
+
+        @keyframes flash {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Responsivo */
+        @media (max-width: 400px) {
+            .registration-card {
+                padding: 25px;
+            }
+
+            .alarm-card {
+                padding: 20px;
+            }
+
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
 
-<audio id="alarm-sound" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+<!-- Som do Alarme -->
+<audio id="alarm-sound" preload="auto" loop>
+    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
 </audio>
 
-<header>
-    <h1>Diário Motor Eletrônico</h1>
-    <div class="subtitle" id="current-date-display">Carregando data...</div>
-</header>
+<!-- Efeito visual do alarme -->
+<div class="alarm-visual" id="alarm-visual"></div>
 
-<div id="tab-diary" class="tab-content active">
-    
-    <div class="panel" id="permission-panel">
-        <h3>🔔 Ativar Alarmes</h3>
-        <p>Para o diário te lembrar a cada 30 minutos, precisamos da sua permissão.</p>
-        <button class="btn-permission" onclick="requestNotificationPermission()">ATIVAR LEMBRETES</button>
-        <p style="font-size: 0.8rem; color: #666;">Nota: Mantenha esta aba aberta no navegador para o alarme tocar.</p>
-    </div>
+<!-- TELA DE CADASTRO -->
+<div class="registration-screen" id="registration-screen">
+    <div class="registration-card">
+        <h1>Diário Motor</h1>
+        <p>Parkinson - Monitoramento de Estado Clínico</p>
 
-    <div style="padding: 0 10px; margin-top: 10px;">
-        <button class="btn-permission" style="background-color: #6c757d; font-size: 0.9rem;" onclick="scrollToCurrent()">Ir para Agora</button>
-    </div>
+        <form id="registration-form">
+            <div class="form-group">
+                <label for="patient-name">Nome Completo</label>
+                <input type="text" id="patient-name" placeholder="Digite seu nome completo" required>
+            </div>
 
-    <div class="timeline" id="timeline-container">
-        </div>
-</div>
+            <div class="form-group">
+                <label for="patient-cpf">CPF</label>
+                <input type="text" id="patient-cpf" placeholder="000.000.000-00" required maxlength="14">
+            </div>
 
-<div id="tab-info" class="tab-content">
-    <div class="panel">
-        <h2>Instruções</h2>
-        [cite_start]<p>Preencha este diário para ajudar seu médico a ajustar sua medicação[cite: 432]. [cite_start]Marque como você se sentiu na <strong>MAIOR PARTE</strong> de cada período de 30 minutos[cite: 438].</p>
-        
-        <h3>Definições:</h3>
-        <ul style="list-style: none; padding: 0;">
-            <li style="margin-bottom: 10px; border-left: 5px solid var(--on-color); padding-left: 10px;">
-                <strong>ON (Ligado/Bem):</strong><br>
-                [cite_start]Mobilidade boa ou praticamente normal[cite: 441, 442].
-            </li>
-            <li style="margin-bottom: 10px; border-left: 5px solid var(--dys-color); padding-left: 10px;">
-                <strong>ON com Discinesia:</strong><br>
-                [cite_start]Com movimentos involuntários de contorção que incomodam[cite: 444, 446].
-            </li>
-            <li style="margin-bottom: 10px; border-left: 5px solid var(--off-color); padding-left: 10px;">
-                <strong>OFF (Desligado/Travado):</strong><br>
-                [cite_start]Rigidez, lentidão marcante ou imobilidade[cite: 447, 449].
-            </li>
-            <li style="margin-bottom: 10px; border-left: 5px solid var(--sleep-color); padding-left: 10px;">
-                <strong>DORMINDO:</strong><br>
-                [cite_start]Tempo que passou dormindo[cite: 448].
-            </li>
-        </ul>
-    </div>
+            <div class="form-group">
+                <label for="destination-email">E-mail para Envio do Relatório</label>
+                <input type="email" id="destination-email" placeholder="medico@exemplo.com" required>
+            </div>
 
-    <div class="panel export-section">
-        <h3>Área do Pesquisador</h3>
-        <div class="alert-box">
-            <label>ID do Paciente:</label>
-            <input type="text" id="patient-id" value="PACIENTE-01" style="width: 100%; padding: 5px; margin-top: 5px;">
-        </div>
-        <button class="btn-permission" onclick="exportCSV()">📥 Baixar Relatório (CSV)</button>
-        <button class="btn-permission" style="background-color: #dc3545; margin-top: 10px;" onclick="resetData()">🗑️ Limpar Tudo</button>
+            <button type="submit" class="btn-start" id="btn-start-diary">
+                INICIAR DIÁRIO
+            </button>
+        </form>
+
+        <p style="font-size: 0.8rem; color: #888; margin-top: 20px;">
+            Ao iniciar, você será solicitado a permitir notificações para os alarmes de avaliação.
+        </p>
     </div>
 </div>
 
-<nav class="bottom-nav">
-    <button class="nav-btn" onclick="switchTab('tab-diary')">
-        <span>📝</span>
-        Diário
-    </button>
-    <button class="nav-btn" onclick="switchTab('tab-info')">
-        <span>ℹ️</span>
-        Instruções / Enviar
-    </button>
-</nav>
+<!-- TELA PRINCIPAL DO DIÁRIO -->
+<div class="diary-screen" id="diary-screen">
+    <header>
+        <div class="header-content">
+            <div class="header-info">
+                <h1>Diário Motor</h1>
+                <div class="patient-info" id="header-patient-info">Paciente</div>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>Ativo</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab: Diário -->
+    <div id="tab-diary" class="tab-content active">
+        <div class="controls-panel">
+            <div class="time-display">
+                <div class="current-time" id="current-time">00:00</div>
+                <div class="current-date" id="current-date">Carregando...</div>
+            </div>
+
+            <div class="next-alarm" id="next-alarm-display">
+                Próxima avaliação em: <strong id="next-alarm-time">--:--</strong>
+            </div>
+
+            <button class="btn-action btn-manual" onclick="showAlarmModal('manual')">
+                Registrar Avaliação Agora
+            </button>
+
+            <button class="btn-action btn-end-day" onclick="showFinishModal()">
+                Finalizar Dia (Ir Dormir)
+            </button>
+        </div>
+
+        <div class="evaluations-panel">
+            <h2>
+                Avaliações de Hoje
+                <span class="eval-count" id="eval-count">0</span>
+            </h2>
+
+            <div class="evaluation-list" id="evaluation-list">
+                <div class="empty-state">
+                    Nenhuma avaliação registrada ainda.<br>
+                    A primeira avaliação (basal) será solicitada em breve.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Instruções -->
+    <div id="tab-info" class="tab-content">
+        <div class="instructions-panel">
+            <h2>Como usar o Diário</h2>
+            <p>A cada 30 minutos, um alarme aparecerá pedindo que você informe seu estado clínico atual. Responda como está se sentindo <strong>naquele momento</strong>.</p>
+
+            <h3 style="margin-top: 20px; margin-bottom: 15px;">Estados Clínicos:</h3>
+
+            <div class="state-legend">
+                <div class="legend-item">
+                    <div class="legend-color on">ON</div>
+                    <div class="legend-text">
+                        <strong>ON (Bem)</strong>
+                        <span>Mobilidade boa ou praticamente normal. Medicação funcionando bem.</span>
+                    </div>
+                </div>
+
+                <div class="legend-item">
+                    <div class="legend-color dys">DYS</div>
+                    <div class="legend-text">
+                        <strong>ON com Discinesia</strong>
+                        <span>Movimentos involuntários de contorção que incomodam. Medicação em excesso.</span>
+                    </div>
+                </div>
+
+                <div class="legend-item">
+                    <div class="legend-color off">OFF</div>
+                    <div class="legend-text">
+                        <strong>OFF (Travado)</strong>
+                        <span>Rigidez, lentidão marcante ou imobilidade. Medicação não está funcionando.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Configurações -->
+    <div id="tab-config" class="tab-content">
+        <div class="config-panel">
+            <h2>Configurações</h2>
+
+            <div class="config-item">
+                <label>E-mail para Envio</label>
+                <input type="email" id="config-email" placeholder="medico@exemplo.com">
+            </div>
+
+            <div class="config-item">
+                <label>Intervalo entre Avaliações (minutos)</label>
+                <input type="number" id="config-interval" value="30" min="5" max="120">
+            </div>
+
+            <button class="btn-action btn-manual" onclick="saveConfig()">
+                Salvar Configurações
+            </button>
+
+            <button class="btn-danger" onclick="resetAllData()">
+                Reiniciar Tudo
+            </button>
+        </div>
+
+        <div class="config-panel">
+            <h2>Exportar Dados Manualmente</h2>
+            <button class="btn-action btn-manual" onclick="downloadCSV()">
+                Baixar CSV
+            </button>
+            <button class="btn-action btn-manual" style="background: #28a745;" onclick="downloadJSON()">
+                Baixar JSON
+            </button>
+            <button class="btn-action btn-manual" style="background: #dc3545;" onclick="downloadPDF()">
+                Baixar PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Menu Inferior -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('tab-diary', this)">
+            <span>📊</span>
+            Diário
+        </button>
+        <button class="nav-btn" onclick="switchTab('tab-info', this)">
+            <span>ℹ️</span>
+            Instruções
+        </button>
+        <button class="nav-btn" onclick="switchTab('tab-config', this)">
+            <span>⚙️</span>
+            Config
+        </button>
+    </nav>
+</div>
+
+<!-- MODAL DE ALARME / AVALIAÇÃO -->
+<div class="alarm-modal" id="alarm-modal">
+    <div class="alarm-card">
+        <div class="alarm-icon" id="alarm-icon">⏰</div>
+        <div class="alarm-title" id="alarm-title">Hora da Avaliação!</div>
+        <div class="alarm-subtitle" id="alarm-subtitle">Como você está se sentindo agora?</div>
+        <div class="alarm-time" id="alarm-current-time">00:00:00</div>
+
+        <div class="state-buttons">
+            <button class="state-btn on-btn" onclick="submitEvaluation('ON')">
+                <span>😊</span> ON - Estou Bem
+            </button>
+            <button class="state-btn dys-btn" onclick="submitEvaluation('DYS')">
+                <span>〰️</span> ON com Discinesia
+            </button>
+            <button class="state-btn off-btn" onclick="submitEvaluation('OFF')">
+                <span>🐢</span> OFF - Travado
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE FINALIZAÇÃO -->
+<div class="finish-modal" id="finish-modal">
+    <div class="finish-card">
+        <div class="alarm-icon">🌙</div>
+        <div class="alarm-title">Finalizar o Dia</div>
+        <div class="alarm-subtitle">Resumo das suas avaliações de hoje</div>
+
+        <div class="summary-stats">
+            <div class="stat-box on">
+                <div class="stat-number" id="summary-on">0</div>
+                <div class="stat-label">ON</div>
+            </div>
+            <div class="stat-box dys">
+                <div class="stat-number" id="summary-dys">0</div>
+                <div class="stat-label">Discinesia</div>
+            </div>
+            <div class="stat-box off">
+                <div class="stat-number" id="summary-off">0</div>
+                <div class="stat-label">OFF</div>
+            </div>
+        </div>
+
+        <p style="color: #666; font-size: 0.9rem;">
+            Total de avaliações: <strong id="summary-total">0</strong><br>
+            Duração do monitoramento: <strong id="summary-duration">0h</strong>
+        </p>
+
+        <div class="email-section">
+            <p style="font-weight: 600; margin-bottom: 10px;">Enviar relatório por e-mail:</p>
+            <input type="email" class="email-input" id="finish-email" placeholder="medico@exemplo.com">
+
+            <button class="btn-action btn-manual" onclick="finishDayAndSend()">
+                Enviar e Finalizar
+            </button>
+
+            <button class="btn-action" style="background: #6c757d; color: white;" onclick="closeFinishModal()">
+                Voltar ao Diário
+            </button>
+
+            <div class="sending-status" id="sending-status"></div>
+        </div>
+    </div>
+</div>
 
 <script>
-    /**
-     * CONFIGURAÇÃO E DADOS
-     */
-    const STORAGE_KEY = 'motor_diary_data_v1';
-    let diaryData = {}; // Objeto para armazenar as respostas: { "00:00": "ON", ... }
-    
-    [cite_start]// Lista de horários de 30 min (00:00 até 23:30) [cite: 433]
-    const timeSlots = [];
-    for (let h = 0; h < 24; h++) {
-        timeSlots.push(`${String(h).padStart(2, '0')}:00`);
-        timeSlots.push(`${String(h).padStart(2, '0')}:30`);
+/**
+ * CONFIGURAÇÃO DO EMAILJS
+ * Para funcionar, você precisa:
+ * 1. Criar conta em https://www.emailjs.com/
+ * 2. Configurar um serviço de email (Gmail, Outlook, etc)
+ * 3. Criar um template de email
+ * 4. Substituir os valores abaixo pelos seus
+ */
+const EMAILJS_CONFIG = {
+    publicKey: 'YOUR_PUBLIC_KEY',      // Substitua pela sua Public Key
+    serviceId: 'YOUR_SERVICE_ID',       // Substitua pelo seu Service ID
+    templateId: 'YOUR_TEMPLATE_ID'      // Substitua pelo seu Template ID
+};
+
+// Inicializar EmailJS (descomentar quando configurar)
+// emailjs.init(EMAILJS_CONFIG.publicKey);
+
+/**
+ * ESTADO DA APLICAÇÃO
+ */
+const STORAGE_KEY = 'parkinson_diary_v2';
+
+let appState = {
+    patient: {
+        name: '',
+        cpf: '',
+        email: ''
+    },
+    config: {
+        intervalMinutes: 30,
+        destinationEmail: ''
+    },
+    session: {
+        startTime: null,
+        isActive: false,
+        lastAlarmTime: null
+    },
+    evaluations: []  // Array de { timestamp, status, type }
+};
+
+let alarmInterval = null;
+let clockInterval = null;
+let currentEvalType = 'regular';  // 'basal', 'regular', 'manual'
+
+/**
+ * INICIALIZAÇÃO
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+
+    // Se já tem sessão ativa, ir direto para o diário
+    if (appState.session.isActive && appState.patient.name) {
+        showDiaryScreen();
     }
 
-    /**
-     * INICIALIZAÇÃO
-     */
-    document.addEventListener('DOMContentLoaded', () => {
-        // Data atual
-        const now = new Date();
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('current-date-display').innerText = now.toLocaleDateString('pt-BR', options);
+    // Configurar máscara do CPF
+    document.getElementById('patient-cpf').addEventListener('input', formatCPF);
 
-        // Carregar dados salvos
-        loadData();
+    // Configurar formulário de registro
+    document.getElementById('registration-form').addEventListener('submit', handleRegistration);
 
-        // Renderizar timeline
-        renderTimeline();
+    // Atualizar relógio
+    updateClock();
+    clockInterval = setInterval(updateClock, 1000);
+});
 
-        // Verificar permissão de notificação
-        checkNotificationStatus();
+/**
+ * FORMATAÇÃO DO CPF
+ */
+function formatCPF(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
 
-        // Iniciar loop de verificação de tempo (Alarme)
-        setInterval(checkTimeForAlarm, 60000); // Checa a cada minuto
-        
-        // Destacar o horário atual imediatamente
-        highlightCurrentTime();
-        setInterval(highlightCurrentTime, 60000);
+    if (value.length > 9) {
+        value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    } else if (value.length > 6) {
+        value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    } else if (value.length > 3) {
+        value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    }
+
+    e.target.value = value;
+}
+
+/**
+ * REGISTRO DO PACIENTE
+ */
+function handleRegistration(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('patient-name').value.trim();
+    const cpf = document.getElementById('patient-cpf').value.trim();
+    const email = document.getElementById('destination-email').value.trim();
+
+    if (!name || !cpf || !email) {
+        alert('Por favor, preencha todos os campos.');
+        return;
+    }
+
+    // Validar CPF (formato básico)
+    if (cpf.replace(/\D/g, '').length !== 11) {
+        alert('CPF inválido. Digite os 11 dígitos.');
+        return;
+    }
+
+    // Salvar dados do paciente
+    appState.patient = { name, cpf, email };
+    appState.config.destinationEmail = email;
+    appState.session = {
+        startTime: new Date().toISOString(),
+        isActive: true,
+        lastAlarmTime: null
+    };
+    appState.evaluations = [];
+
+    saveState();
+
+    // Solicitar permissão de notificação
+    requestNotificationPermission().then(() => {
+        showDiaryScreen();
+
+        // Mostrar avaliação basal imediatamente
+        setTimeout(() => {
+            showAlarmModal('basal');
+        }, 1000);
     });
+}
 
-    /**
-     * RENDERIZAÇÃO DA INTERFACE
-     */
-    function renderTimeline() {
-        const container = document.getElementById('timeline-container');
-        container.innerHTML = '';
+/**
+ * PERMISSÃO DE NOTIFICAÇÃO
+ */
+async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        alert("Seu navegador não suporta notificações. Os alarmes aparecerão apenas na tela.");
+        return;
+    }
 
-        timeSlots.forEach((time, index) => {
-            // Calcular horário final do slot (ex: 00:00 - 00:30)
-            let [h, m] = time.split(':').map(Number);
-            let endM = m + 30;
-            let endH = h;
-            if (endM >= 60) { endM = 0; endH = h + 1; }
-            if (endH >= 24) endH = 0;
-            const endTime = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
-
-            const savedValue = diaryData[time] || null;
-
-            const div = document.createElement('div');
-            div.className = 'time-slot';
-            div.id = `slot-${time.replace(':', '-')}`;
-            
-            div.innerHTML = `
-                <div class="time-label">
-                    <span>${time} - ${endTime}</span>
-                    <span class="status-badge" style="display: ${savedValue ? 'block' : 'none'}">Preenchido</span>
-                </div>
-                <div class="options-grid">
-                    <button class="opt-btn ${savedValue === 'ON' ? 'selected' : ''}" onclick="setStatus('${time}', 'ON')">
-                        <span class="icon">😊</span> ON (Bem)
-                    </button>
-                    <button class="opt-btn ${savedValue === 'DYS' ? 'selected' : ''}" onclick="setStatus('${time}', 'DYS')">
-                        <span class="icon">〰️</span> ON c/ Discinesia
-                    </button>
-                    <button class="opt-btn ${savedValue === 'OFF' ? 'selected' : ''}" onclick="setStatus('${time}', 'OFF')">
-                        <span class="icon">🐢</span> OFF (Travado)
-                    </button>
-                    <button class="opt-btn ${savedValue === 'SLEEP' ? 'selected' : ''}" onclick="setStatus('${time}', 'SLEEP')">
-                        <span class="icon">😴</span> Dormindo
-                    </button>
-                </div>
-            `;
-            container.appendChild(div);
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+        new Notification("Diário Motor Ativado", {
+            body: "Você receberá lembretes a cada 30 minutos.",
+            icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png"
         });
     }
+}
 
-    /**
-     * LÓGICA DE PREENCHIMENTO
-     [cite_start]* [cite: 436] - Apenas uma resposta por período
-     */
-    function setStatus(time, status) {
-        diaryData[time] = status;
-        saveData();
-        
-        // Atualizar UI visualmente sem recarregar tudo
-        const slotId = `slot-${time.replace(':', '-')}`;
-        const slotEl = document.getElementById(slotId);
-        const buttons = slotEl.querySelectorAll('.opt-btn');
-        
-        buttons.forEach(btn => {
-            btn.classList.remove('selected');
-            if(btn.innerHTML.includes(getLabelForStatus(status))) {
-               // Fallback simples se o texto bater, mas melhor usar o clique
-            }
-        });
-        
-        // Maneira mais robusta de atualizar classe selected:
-        // Re-renderizar este slot específico ou manipular classes via evento
-        // Simplificando: recarrega classes baseadas no novo estado
-        renderTimeline(); 
-        
-        // Feedback sonoro leve (opcional)
-        // navigator.vibrate(50);
-    }
+/**
+ * MOSTRAR TELA DO DIÁRIO
+ */
+function showDiaryScreen() {
+    document.getElementById('registration-screen').style.display = 'none';
+    document.getElementById('diary-screen').style.display = 'block';
 
-    function getLabelForStatus(status) {
-        if (status === 'ON') return 'ON (Bem)';
-        if (status === 'DYS') return 'ON c/ Discinesia';
-        if (status === 'OFF') return 'OFF (Travado)';
-        if (status === 'SLEEP') return 'Dormindo';
-        return '';
-    }
+    // Atualizar header com info do paciente
+    document.getElementById('header-patient-info').textContent =
+        `${appState.patient.name} | CPF: ${appState.patient.cpf}`;
 
-    /**
-     * PERSISTÊNCIA DE DADOS
-     */
-    function saveData() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(diaryData));
-    }
+    // Atualizar email nas configurações
+    document.getElementById('config-email').value = appState.config.destinationEmail;
+    document.getElementById('finish-email').value = appState.config.destinationEmail;
 
-    function loadData() {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            diaryData = JSON.parse(stored);
-        }
-    }
+    // Renderizar lista de avaliações
+    renderEvaluationList();
 
-    function resetData() {
-        if(confirm("Tem certeza que deseja apagar todos os dados de hoje?")) {
-            localStorage.removeItem(STORAGE_KEY);
-            diaryData = {};
-            renderTimeline();
-            alert("Dados limpos.");
-        }
-    }
+    // Iniciar sistema de alarmes
+    startAlarmSystem();
+}
 
-    /**
-     * ALARMES E NOTIFICAÇÕES
-     */
-    function requestNotificationPermission() {
-        if (!("Notification" in window)) {
-            alert("Este navegador não suporta notificações de sistema.");
-            return;
-        }
-        Notification.requestPermission().then(permission => {
-            checkNotificationStatus();
-            if (permission === "granted") {
-                new Notification("Diário Motor", { body: "Alarmes ativados! Vamos te avisar a cada 30 min." });
-            }
-        });
-    }
+/**
+ * SISTEMA DE ALARMES
+ */
+function startAlarmSystem() {
+    // Verificar a cada minuto se é hora do alarme
+    checkForAlarm(); // Verificar imediatamente
+    alarmInterval = setInterval(checkForAlarm, 60000); // Depois a cada minuto
 
-    function checkNotificationStatus() {
-        const panel = document.getElementById('permission-panel');
-        if (Notification.permission === "granted") {
-            panel.style.display = 'none';
-        } else {
-            panel.style.display = 'block';
-        }
-    }
+    updateNextAlarmDisplay();
+}
 
-    function checkTimeForAlarm() {
-        const now = new Date();
-        const minutes = now.getMinutes();
-        
-        // Alarme toca na hora cheia (00) e meia hora (30)
-        // Adicionamos uma margem de erro caso o navegador "durma" e acorde no minuto 01 ou 31
-        if (minutes === 0 || minutes === 30) {
+function checkForAlarm() {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const intervalMinutes = appState.config.intervalMinutes || 30;
+
+    // Alarme toca quando os minutos são múltiplos do intervalo (0, 30 para 30min)
+    if (minutes % intervalMinutes === 0) {
+        const alarmKey = `${now.getHours()}:${minutes}`;
+
+        // Evitar alarmes duplicados no mesmo minuto
+        if (appState.session.lastAlarmTime !== alarmKey) {
+            appState.session.lastAlarmTime = alarmKey;
+            saveState();
             triggerAlarm();
         }
     }
 
-    function triggerAlarm() {
-        // Tocar som
-        const audio = document.getElementById('alarm-sound');
-        audio.play().catch(e => console.log("Audio play blocked (user needs to interact first)"));
+    updateNextAlarmDisplay();
+}
 
-        // Enviar Notificação
-        if (Notification.permission === "granted") {
-            const notif = new Notification("Hora de Preencher o Diário", {
-                body: "Como você se sentiu nos últimos 30 minutos?",
-                icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png" // Ícone genérico de saúde
-            });
-            notif.onclick = function() {
-                window.focus();
-                scrollToCurrent();
-            };
-        }
-    }
+function triggerAlarm() {
+    // Tocar som
+    const audio = document.getElementById('alarm-sound');
+    audio.currentTime = 0;
+    audio.play().catch(e => console.log("Audio bloqueado - interação necessária"));
 
-    /**
-     * UTILITÁRIOS UI
-     */
-    function highlightCurrentTime() {
-        const now = new Date();
-        const h = now.getHours();
-        const m = now.getMinutes();
-        
-        // Definir qual slot é o atual
-        // Se são 14:15, o slot é 14:00. Se 14:45, o slot é 14:30.
-        const slotM = m < 30 ? '00' : '30';
-        const slotH = String(h).padStart(2, '0');
-        const currentId = `slot-${slotH}-${slotM}`;
+    // Flash visual
+    const visual = document.getElementById('alarm-visual');
+    visual.classList.add('flashing');
+    setTimeout(() => visual.classList.remove('flashing'), 2000);
 
-        // Remover destaque anterior
-        document.querySelectorAll('.time-slot').forEach(el => el.classList.remove('active-now'));
-
-        // Adicionar novo destaque
-        const el = document.getElementById(currentId);
-        if (el) {
-            el.classList.add('active-now');
-        }
-    }
-
-    function scrollToCurrent() {
-        const active = document.querySelector('.active-now');
-        if (active) {
-            active.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            // Fallback: tenta calcular se highlight ainda não rodou
-            highlightCurrentTime();
-            setTimeout(() => {
-                const activeDelay = document.querySelector('.active-now');
-                if(activeDelay) activeDelay.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-        }
-    }
-
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-        window.scrollTo(0, 0);
-    }
-
-    /**
-     * EXPORTAÇÃO (CSV)
-     */
-    function exportCSV() {
-        const patientId = document.getElementById('patient-id').value;
-        const dateStr = new Date().toLocaleDateString('pt-BR');
-        
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Patient_ID,Date,Time_Start,Time_End,Status,Status_Code\n";
-
-        timeSlots.forEach(time => {
-            const status = diaryData[time] || "MISSING";
-            
-            // Recalcular fim para o CSV ficar bonito
-            let [h, m] = time.split(':').map(Number);
-            let endM = m + 30;
-            let endH = h;
-            if (endM >= 60) { endM = 0; endH = h + 1; }
-            const endTime = `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
-
-            // Códigos numéricos para facilitar análise estatística
-            // 0=Sleep, 1=OFF, 2=ON, 3=DYS (Exemplo de codificação comum)
-            let code = "";
-            if (status === 'SLEEP') code = 0;
-            if (status === 'OFF') code = 1;
-            if (status === 'ON') code = 2;
-            if (status === 'DYS') code = 3;
-
-            csvContent += `${patientId},${dateStr},${time},${endTime},${status},${code}\n`;
+    // Enviar notificação do sistema
+    if (Notification.permission === "granted") {
+        const notif = new Notification("Hora da Avaliação!", {
+            body: "Como você está se sentindo agora?",
+            icon: "https://cdn-icons-png.flaticon.com/512/2966/2966327.png",
+            requireInteraction: true,
+            tag: 'parkinson-alarm'
         });
 
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Diario_Motor_${patientId}_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        notif.onclick = () => {
+            window.focus();
+            notif.close();
+        };
     }
+
+    // Mostrar modal
+    showAlarmModal('regular');
+}
+
+function updateNextAlarmDisplay() {
+    const now = new Date();
+    const intervalMinutes = appState.config.intervalMinutes || 30;
+
+    // Calcular próximo horário de alarme
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const nextAlarmMinutes = Math.ceil((currentMinutes + 1) / intervalMinutes) * intervalMinutes;
+
+    const nextHour = Math.floor(nextAlarmMinutes / 60) % 24;
+    const nextMin = nextAlarmMinutes % 60;
+
+    document.getElementById('next-alarm-time').textContent =
+        `${String(nextHour).padStart(2, '0')}:${String(nextMin).padStart(2, '0')}`;
+}
+
+/**
+ * MODAL DE AVALIAÇÃO
+ */
+function showAlarmModal(type = 'regular') {
+    currentEvalType = type;
+
+    const modal = document.getElementById('alarm-modal');
+    const icon = document.getElementById('alarm-icon');
+    const title = document.getElementById('alarm-title');
+    const subtitle = document.getElementById('alarm-subtitle');
+
+    if (type === 'basal') {
+        icon.textContent = '🌅';
+        title.textContent = 'Avaliação Basal';
+        subtitle.textContent = 'Como você está se sentindo ao acordar?';
+    } else if (type === 'manual') {
+        icon.textContent = '📝';
+        title.textContent = 'Avaliação Manual';
+        subtitle.textContent = 'Registre seu estado atual:';
+    } else {
+        icon.textContent = '⏰';
+        title.textContent = 'Hora da Avaliação!';
+        subtitle.textContent = 'Como você está se sentindo agora?';
+    }
+
+    // Atualizar horário no modal
+    updateAlarmModalTime();
+
+    modal.classList.add('active');
+
+    // Tocar som se for alarme regular
+    if (type === 'regular') {
+        const audio = document.getElementById('alarm-sound');
+        audio.play().catch(() => {});
+    }
+}
+
+function updateAlarmModalTime() {
+    const now = new Date();
+    document.getElementById('alarm-current-time').textContent =
+        now.toLocaleTimeString('pt-BR');
+}
+
+function closeAlarmModal() {
+    const modal = document.getElementById('alarm-modal');
+    modal.classList.remove('active');
+
+    // Parar som
+    const audio = document.getElementById('alarm-sound');
+    audio.pause();
+    audio.currentTime = 0;
+}
+
+/**
+ * SUBMETER AVALIAÇÃO
+ */
+function submitEvaluation(status) {
+    const now = new Date();
+
+    const evaluation = {
+        timestamp: now.toISOString(),
+        timeFormatted: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        dateFormatted: now.toLocaleDateString('pt-BR'),
+        status: status,
+        type: currentEvalType
+    };
+
+    appState.evaluations.push(evaluation);
+    saveState();
+
+    closeAlarmModal();
+    renderEvaluationList();
+
+    // Feedback visual
+    showToast(`Avaliação registrada: ${getStatusLabel(status)}`);
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        'ON': 'ON (Bem)',
+        'DYS': 'ON com Discinesia',
+        'OFF': 'OFF (Travado)'
+    };
+    return labels[status] || status;
+}
+
+/**
+ * RENDERIZAR LISTA DE AVALIAÇÕES
+ */
+function renderEvaluationList() {
+    const container = document.getElementById('evaluation-list');
+    const count = document.getElementById('eval-count');
+
+    count.textContent = appState.evaluations.length;
+
+    if (appState.evaluations.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                Nenhuma avaliação registrada ainda.<br>
+                A primeira avaliação (basal) será solicitada em breve.
+            </div>
+        `;
+        return;
+    }
+
+    // Ordenar por timestamp (mais recente primeiro)
+    const sorted = [...appState.evaluations].reverse();
+
+    container.innerHTML = sorted.map(eval => {
+        const typeLabels = {
+            'basal': 'Basal',
+            'regular': 'Automática',
+            'manual': 'Manual'
+        };
+
+        return `
+            <div class="evaluation-item">
+                <span class="eval-time">${eval.timeFormatted}</span>
+                <span class="eval-status ${eval.status}">${getStatusLabel(eval.status)}</span>
+                <span class="eval-type">${typeLabels[eval.type] || 'Regular'}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * MODAL DE FINALIZAÇÃO
+ */
+function showFinishModal() {
+    if (appState.evaluations.length === 0) {
+        alert('Nenhuma avaliação foi registrada ainda. Faça pelo menos uma avaliação antes de finalizar.');
+        return;
+    }
+
+    // Calcular estatísticas
+    const stats = {
+        ON: appState.evaluations.filter(e => e.status === 'ON').length,
+        DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
+        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
+    };
+
+    document.getElementById('summary-on').textContent = stats.ON;
+    document.getElementById('summary-dys').textContent = stats.DYS;
+    document.getElementById('summary-off').textContent = stats.OFF;
+    document.getElementById('summary-total').textContent = appState.evaluations.length;
+
+    // Calcular duração
+    if (appState.session.startTime) {
+        const start = new Date(appState.session.startTime);
+        const end = new Date();
+        const diffMs = end - start;
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        document.getElementById('summary-duration').textContent = `${hours}h ${minutes}min`;
+    }
+
+    // Preencher email
+    document.getElementById('finish-email').value = appState.config.destinationEmail;
+
+    document.getElementById('finish-modal').classList.add('active');
+}
+
+function closeFinishModal() {
+    document.getElementById('finish-modal').classList.remove('active');
+    document.getElementById('sending-status').className = 'sending-status';
+    document.getElementById('sending-status').textContent = '';
+}
+
+/**
+ * FINALIZAR DIA E ENVIAR EMAIL
+ */
+async function finishDayAndSend() {
+    const email = document.getElementById('finish-email').value.trim();
+
+    if (!email) {
+        alert('Por favor, informe o e-mail de destino.');
+        return;
+    }
+
+    const statusEl = document.getElementById('sending-status');
+    statusEl.className = 'sending-status loading';
+    statusEl.textContent = 'Gerando arquivos e enviando...';
+
+    try {
+        // Gerar os arquivos
+        const csvContent = generateCSVContent();
+        const jsonContent = generateJSONContent();
+        const pdfBlob = await generatePDFContent();
+
+        // Tentar enviar por EmailJS
+        const emailSent = await sendEmail(email, csvContent, jsonContent, pdfBlob);
+
+        if (emailSent) {
+            statusEl.className = 'sending-status success';
+            statusEl.textContent = 'Relatório enviado com sucesso!';
+
+            // Marcar sessão como finalizada
+            appState.session.isActive = false;
+            appState.session.endTime = new Date().toISOString();
+            saveState();
+
+            // Oferecer download local também
+            setTimeout(() => {
+                if (confirm('Deseja também baixar os arquivos localmente?')) {
+                    downloadCSV();
+                    downloadJSON();
+                    downloadPDF();
+                }
+
+                // Reiniciar para nova sessão
+                setTimeout(() => {
+                    if (confirm('Deseja iniciar um novo dia de monitoramento?')) {
+                        resetForNewDay();
+                    }
+                }, 1000);
+            }, 2000);
+        } else {
+            throw new Error('Falha no envio');
+        }
+
+    } catch (error) {
+        console.error('Erro ao enviar:', error);
+        statusEl.className = 'sending-status error';
+        statusEl.textContent = 'Erro ao enviar. Os arquivos serão baixados localmente.';
+
+        // Fallback: baixar arquivos localmente
+        setTimeout(() => {
+            downloadCSV();
+            downloadJSON();
+            downloadPDF();
+
+            alert('Os arquivos foram baixados. Por favor, envie-os manualmente por email.');
+        }, 2000);
+    }
+}
+
+/**
+ * ENVIAR EMAIL
+ */
+async function sendEmail(toEmail, csvContent, jsonContent, pdfBlob) {
+    // Verificar se EmailJS está configurado
+    if (EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
+        console.log('EmailJS não configurado. Usando fallback de download.');
+        return false;
+    }
+
+    try {
+        // Converter para base64 para envio
+        const csvBase64 = btoa(unescape(encodeURIComponent(csvContent)));
+        const jsonBase64 = btoa(unescape(encodeURIComponent(jsonContent)));
+
+        // Converter PDF blob para base64
+        const pdfBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(pdfBlob);
+        });
+
+        const templateParams = {
+            to_email: toEmail,
+            patient_name: appState.patient.name,
+            patient_cpf: appState.patient.cpf,
+            date: new Date().toLocaleDateString('pt-BR'),
+            total_evaluations: appState.evaluations.length,
+            csv_content: csvBase64,
+            json_content: jsonBase64,
+            pdf_content: pdfBase64
+        };
+
+        await emailjs.send(
+            EMAILJS_CONFIG.serviceId,
+            EMAILJS_CONFIG.templateId,
+            templateParams
+        );
+
+        return true;
+    } catch (error) {
+        console.error('Erro EmailJS:', error);
+        return false;
+    }
+}
+
+/**
+ * GERAR CONTEÚDO CSV
+ */
+function generateCSVContent() {
+    let csv = 'Nome,CPF,Data,Hora,Timestamp,Status,Status_Codigo,Tipo_Avaliacao\n';
+
+    appState.evaluations.forEach(eval => {
+        const statusCode = { 'ON': 2, 'DYS': 3, 'OFF': 1 }[eval.status] || 0;
+        csv += `"${appState.patient.name}","${appState.patient.cpf}","${eval.dateFormatted}","${eval.timeFormatted}","${eval.timestamp}","${eval.status}",${statusCode},"${eval.type}"\n`;
+    });
+
+    return csv;
+}
+
+/**
+ * GERAR CONTEÚDO JSON
+ */
+function generateJSONContent() {
+    const data = {
+        patient: {
+            name: appState.patient.name,
+            cpf: appState.patient.cpf
+        },
+        session: {
+            startTime: appState.session.startTime,
+            endTime: new Date().toISOString(),
+            totalEvaluations: appState.evaluations.length
+        },
+        summary: {
+            ON: appState.evaluations.filter(e => e.status === 'ON').length,
+            DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
+            OFF: appState.evaluations.filter(e => e.status === 'OFF').length
+        },
+        evaluations: appState.evaluations
+    };
+
+    return JSON.stringify(data, null, 2);
+}
+
+/**
+ * GERAR CONTEÚDO PDF
+ */
+async function generatePDFContent() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Título
+    doc.setFontSize(18);
+    doc.setTextColor(0, 86, 179);
+    doc.text('Diário Motor - Parkinson', 105, 20, { align: 'center' });
+
+    // Informações do paciente
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Paciente: ${appState.patient.name}`, 20, 35);
+    doc.text(`CPF: ${appState.patient.cpf}`, 20, 42);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 49);
+
+    // Resumo
+    const stats = {
+        ON: appState.evaluations.filter(e => e.status === 'ON').length,
+        DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
+        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
+    };
+
+    doc.setFontSize(14);
+    doc.text('Resumo', 20, 65);
+
+    doc.autoTable({
+        startY: 70,
+        head: [['Estado', 'Quantidade', 'Percentual']],
+        body: [
+            ['ON (Bem)', stats.ON, `${((stats.ON / appState.evaluations.length) * 100).toFixed(1)}%`],
+            ['ON com Discinesia', stats.DYS, `${((stats.DYS / appState.evaluations.length) * 100).toFixed(1)}%`],
+            ['OFF (Travado)', stats.OFF, `${((stats.OFF / appState.evaluations.length) * 100).toFixed(1)}%`],
+            ['Total', appState.evaluations.length, '100%']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [0, 86, 179] }
+    });
+
+    // Tabela de avaliações
+    doc.setFontSize(14);
+    doc.text('Avaliações Detalhadas', 20, doc.lastAutoTable.finalY + 15);
+
+    const evalRows = appState.evaluations.map(eval => [
+        eval.dateFormatted,
+        eval.timeFormatted,
+        eval.status,
+        eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Automática'
+    ]);
+
+    doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['Data', 'Hora', 'Estado', 'Tipo']],
+        body: evalRows,
+        theme: 'striped',
+        headStyles: { fillColor: [0, 86, 179] }
+    });
+
+    // Rodapé
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(128);
+        doc.text(
+            `Gerado em ${new Date().toLocaleString('pt-BR')} - Página ${i} de ${pageCount}`,
+            105, 290, { align: 'center' }
+        );
+    }
+
+    return doc.output('blob');
+}
+
+/**
+ * DOWNLOADS MANUAIS
+ */
+function downloadCSV() {
+    const csv = generateCSVContent();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `DiarioMotor_${appState.patient.cpf.replace(/\D/g, '')}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+}
+
+function downloadJSON() {
+    const json = generateJSONContent();
+    const blob = new Blob([json], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `DiarioMotor_${appState.patient.cpf.replace(/\D/g, '')}_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+}
+
+async function downloadPDF() {
+    const pdfBlob = await generatePDFContent();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(pdfBlob);
+    link.download = `DiarioMotor_${appState.patient.cpf.replace(/\D/g, '')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    link.click();
+}
+
+/**
+ * CONFIGURAÇÕES
+ */
+function saveConfig() {
+    appState.config.destinationEmail = document.getElementById('config-email').value;
+    appState.config.intervalMinutes = parseInt(document.getElementById('config-interval').value) || 30;
+    saveState();
+    showToast('Configurações salvas!');
+}
+
+/**
+ * UTILITÁRIOS
+ */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('current-time').textContent =
+        now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('current-date').textContent =
+        now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Atualizar hora no modal se estiver aberto
+    if (document.getElementById('alarm-modal').classList.contains('active')) {
+        updateAlarmModalTime();
+    }
+}
+
+function switchTab(tabId, btn) {
+    // Esconder todas as tabs
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+    // Mostrar tab selecionada
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+
+function showToast(message) {
+    // Toast simples
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #333;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        animation: fadeInUp 0.3s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
+/**
+ * PERSISTÊNCIA
+ */
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+}
+
+function loadState() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        appState = { ...appState, ...parsed };
+    }
+}
+
+function resetAllData() {
+    if (confirm('Tem certeza que deseja apagar TODOS os dados? Esta ação não pode ser desfeita.')) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+    }
+}
+
+function resetForNewDay() {
+    appState.session = {
+        startTime: null,
+        isActive: false,
+        lastAlarmTime: null
+    };
+    appState.evaluations = [];
+    saveState();
+
+    // Voltar para tela de cadastro (mantendo dados do paciente)
+    document.getElementById('diary-screen').style.display = 'none';
+    document.getElementById('registration-screen').style.display = 'flex';
+
+    // Preencher dados existentes
+    document.getElementById('patient-name').value = appState.patient.name;
+    document.getElementById('patient-cpf').value = appState.patient.cpf;
+    document.getElementById('destination-email').value = appState.config.destinationEmail;
+
+    closeFinishModal();
+}
+
+/**
+ * SERVICE WORKER PARA SEGUNDO PLANO
+ * Nota: Para funcionar em segundo plano real, precisa de HTTPS e um service worker registrado
+ */
+if ('serviceWorker' in navigator) {
+    // Registrar service worker se disponível
+    // navigator.serviceWorker.register('/sw.js').then(...);
+}
+
+// Manter a página ativa com Wake Lock API (se disponível)
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            const wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Wake Lock ativo');
+            return wakeLock;
+        } catch (err) {
+            console.log('Wake Lock não disponível:', err);
+        }
+    }
+}
+
+// Tentar manter a tela ligada quando o diário estiver ativo
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && appState.session.isActive) {
+        requestWakeLock();
+    }
+});
 </script>
 
 </body>
