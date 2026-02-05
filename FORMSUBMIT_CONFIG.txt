@@ -1,0 +1,108 @@
+================================================================================
+              CONFIGURACAO DO ENVIO DE EMAIL - FORMSUBMIT
+================================================================================
+
+O Diario Motor usa o FormSubmit.co para envio de emails.
+
+VANTAGENS:
+- GRATUITO e SEM LIMITES de envio
+- Nao precisa criar conta
+- Configuracao automatica
+- Funciona direto do navegador
+
+================================================================================
+                         COMO FUNCIONA
+================================================================================
+
+1. PRIMEIRA VEZ QUE ENVIAR:
+   - O FormSubmit envia um email de confirmacao para o endereco do medico
+   - O medico deve clicar no link de confirmacao
+   - Isso so precisa ser feito UMA vez por endereco de email
+
+2. APOS CONFIRMAR:
+   - Todos os envios futuros funcionam automaticamente
+   - Nao e necessaria mais nenhuma configuracao
+
+================================================================================
+                    O QUE O MEDICO RECEBE NO EMAIL
+================================================================================
+
+O email enviado contem TODOS os dados necessarios:
+
+1. DADOS DO PACIENTE
+   - Nome completo
+   - CPF
+   - Data do relatorio
+   - Duracao do monitoramento
+
+2. RESUMO ESTATISTICO
+   - Total de avaliacoes
+   - Quantidade e percentual de ON
+   - Quantidade e percentual de Discinesia
+   - Quantidade e percentual de OFF
+
+3. LISTA DE AVALIACOES DETALHADAS
+   - Cada avaliacao com data, hora, status e tipo
+
+4. DADOS CSV COMPLETOS
+   - O CSV completo esta no corpo do email
+   - O medico pode copiar e colar em um arquivo .csv
+   - Abre diretamente no Excel/Google Sheets
+
+================================================================================
+                        FORMATO DO CSV
+================================================================================
+
+Colunas: Nome, CPF, Data, Hora, Timestamp, Status, Status_Codigo, Tipo_Avaliacao
+
+Codigos de Status:
+- 1 = OFF (Travado)
+- 2 = ON (Bem)
+- 3 = DYS (Discinesia)
+
+Tipos de Avaliacao:
+- basal = Primeira avaliacao do dia (ao acordar)
+- regular = Avaliacao automatica (alarme)
+- manual = Avaliacao feita pelo paciente fora do horario
+
+================================================================================
+                    PARA O MEDICO: COMO SALVAR O CSV
+================================================================================
+
+1. Abra o email recebido
+2. Localize a secao "DADOS CSV"
+3. Selecione todo o conteudo CSV (desde o cabecalho ate a ultima linha)
+4. Copie (Ctrl+C)
+5. Abra o Bloco de Notas ou similar
+6. Cole (Ctrl+V)
+7. Salve como: DiarioMotor_PACIENTE_DATA.csv
+
+OU
+
+1. Abra o Excel/Google Sheets
+2. Cole diretamente na celula A1
+3. Use "Texto para Colunas" com separador virgula
+
+================================================================================
+                         SOLUCAO DE PROBLEMAS
+================================================================================
+
+PROBLEMA: Email nao esta chegando
+SOLUCAO: Verifique se o email do medico foi confirmado. Na primeira vez,
+         o FormSubmit envia um email pedindo confirmacao.
+
+PROBLEMA: Erro ao enviar
+SOLUCAO: Verifique a conexao com a internet do paciente.
+
+PROBLEMA: Email vai para spam
+SOLUCAO: O medico deve marcar como "Nao e spam" e adicionar
+         noreply@formsubmit.co aos contatos.
+
+================================================================================
+                           SUPORTE
+================================================================================
+
+FormSubmit: https://formsubmit.co/
+Documentacao: https://formsubmit.co/documentation
+
+================================================================================
