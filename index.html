@@ -1299,42 +1299,106 @@ function getStatusLabel(status) {
 
 /**
  * CALCULAR MÉTRICAS CLÍNICAS
- * Retorna as métricas padrão de ensaios clínicos em Parkinson
+ * Calcula métricas baseadas nos timestamps reais das avaliações
+ * Cada avaliação representa o estado do paciente ATÉ a próxima avaliação
  */
 function calculateClinicalMetrics() {
     const intervalMinutes = appState.config.intervalMinutes || 30;
-    const intervalHours = intervalMinutes / 60;
 
-    // Contar cada estado
-    const counts = {
-        ON: appState.evaluations.filter(e => e.status === 'ON').length,
-        DYS_NP: appState.evaluations.filter(e => e.status === 'DYS_NP').length,
-        DYS_P: appState.evaluations.filter(e => e.status === 'DYS_P').length,
-        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
-    };
+    // Se não houver avaliações, retornar zeros
+    if (appState.evaluations.length === 0) {
+        return {
+            counts: { ON: 0, DYS_NP: 0, DYS_P: 0, OFF: 0 },
+            total: 0,
+            intervalMinutes,
+            timeOnGood: '0.0',
+            timeOnBad: '0.0',
+            timeOff: '0.0',
+            totalTime: '0.0',
+            pctOnGood: '0.0',
+            pctOnBad: '0.0',
+            pctOff: '0.0'
+        };
+    }
 
-    const total = appState.evaluations.length;
+    // Ordenar avaliações por timestamp
+    const sortedEvals = [...appState.evaluations].sort((a, b) =>
+        new Date(a.timestamp) - new Date(b.timestamp)
+    );
 
-    // Calcular tempo em horas (cada avaliação representa o intervalo configurado)
-    const timeOnGood = (counts.ON + counts.DYS_NP) * intervalHours;  // ON sem discinesia problemática
-    const timeOnBad = counts.DYS_P * intervalHours;                   // ON com discinesia problemática
-    const timeOff = counts.OFF * intervalHours;                       // OFF
-    const totalTime = total * intervalHours;                          // Tempo total de vigília
+    // Inicializar tempos em milissegundos
+    let timeOn = 0;      // ON sem discinesia
+    let timeDysNP = 0;   // Discinesia não problemática
+    let timeDysP = 0;    // Discinesia problemática
+    let timeOff = 0;     // OFF
+
+    // Contar avaliações
+    const counts = { ON: 0, DYS_NP: 0, DYS_P: 0, OFF: 0 };
+
+    // Calcular tempo para cada avaliação baseado no intervalo até a próxima
+    for (let i = 0; i < sortedEvals.length; i++) {
+        const current = sortedEvals[i];
+        const currentTime = new Date(current.timestamp);
+
+        // Contar a avaliação
+        if (counts.hasOwnProperty(current.status)) {
+            counts[current.status]++;
+        }
+
+        // Determinar o fim do período desta avaliação
+        let periodEnd;
+        if (i < sortedEvals.length - 1) {
+            // Se há próxima avaliação, o período vai até ela
+            periodEnd = new Date(sortedEvals[i + 1].timestamp);
+        } else {
+            // Última avaliação: período vai até agora (ou intervalo padrão, o que for menor)
+            const now = new Date();
+            const maxEnd = new Date(currentTime.getTime() + intervalMinutes * 60 * 1000);
+            periodEnd = now < maxEnd ? now : maxEnd;
+        }
+
+        // Calcular duração em milissegundos
+        const duration = periodEnd - currentTime;
+
+        // Adicionar ao tempo do estado correspondente
+        switch (current.status) {
+            case 'ON':
+                timeOn += duration;
+                break;
+            case 'DYS_NP':
+                timeDysNP += duration;
+                break;
+            case 'DYS_P':
+                timeDysP += duration;
+                break;
+            case 'OFF':
+                timeOff += duration;
+                break;
+        }
+    }
+
+    // Converter para horas
+    const msToHours = ms => ms / (1000 * 60 * 60);
+
+    const timeOnGoodHours = msToHours(timeOn + timeDysNP);  // ON sem discinesia problemática
+    const timeOnBadHours = msToHours(timeDysP);             // ON com discinesia problemática
+    const timeOffHours = msToHours(timeOff);                // OFF
+    const totalTimeHours = timeOnGoodHours + timeOnBadHours + timeOffHours;
 
     // Calcular percentuais
-    const pctOnGood = total > 0 ? (timeOnGood / totalTime * 100) : 0;
-    const pctOnBad = total > 0 ? (timeOnBad / totalTime * 100) : 0;
-    const pctOff = total > 0 ? (timeOff / totalTime * 100) : 0;
+    const pctOnGood = totalTimeHours > 0 ? (timeOnGoodHours / totalTimeHours * 100) : 0;
+    const pctOnBad = totalTimeHours > 0 ? (timeOnBadHours / totalTimeHours * 100) : 0;
+    const pctOff = totalTimeHours > 0 ? (timeOffHours / totalTimeHours * 100) : 0;
 
     return {
         counts,
-        total,
+        total: sortedEvals.length,
         intervalMinutes,
         // Tempos em horas
-        timeOnGood: timeOnGood.toFixed(1),
-        timeOnBad: timeOnBad.toFixed(1),
-        timeOff: timeOff.toFixed(1),
-        totalTime: totalTime.toFixed(1),
+        timeOnGood: timeOnGoodHours.toFixed(1),
+        timeOnBad: timeOnBadHours.toFixed(1),
+        timeOff: timeOffHours.toFixed(1),
+        totalTime: totalTimeHours.toFixed(1),
         // Percentuais
         pctOnGood: pctOnGood.toFixed(1),
         pctOnBad: pctOnBad.toFixed(1),
