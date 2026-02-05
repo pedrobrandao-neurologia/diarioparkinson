@@ -12,7 +12,8 @@
     <style>
         :root {
             --on-color: #28a745;
-            --dys-color: #ffc107;
+            --dys-np-color: #ffc107;      /* Discinesia não problemática - amarelo */
+            --dys-p-color: #fd7e14;       /* Discinesia problemática - laranja */
             --off-color: #dc3545;
             --sleep-color: #6c757d;
             --bg-color: #f4f6f9;
@@ -290,7 +291,8 @@
         }
 
         .eval-status.ON { background: var(--on-color); color: white; }
-        .eval-status.DYS { background: var(--dys-color); color: #000; }
+        .eval-status.DYS_NP { background: var(--dys-np-color); color: #000; }
+        .eval-status.DYS_P { background: var(--dys-p-color); color: white; }
         .eval-status.OFF { background: var(--off-color); color: white; }
 
         .eval-type {
@@ -388,7 +390,8 @@
         }
 
         .state-btn.on-btn { background: var(--on-color); color: white; }
-        .state-btn.dys-btn { background: var(--dys-color); color: #000; }
+        .state-btn.dys-np-btn { background: var(--dys-np-color); color: #000; }
+        .state-btn.dys-p-btn { background: var(--dys-p-color); color: white; }
         .state-btn.off-btn { background: var(--off-color); color: white; }
 
         /* MODAL DE FINALIZAÇÃO */
@@ -774,25 +777,33 @@
 
             <div class="state-legend">
                 <div class="legend-item">
-                    <div class="legend-color on">ON</div>
+                    <div class="legend-color" style="background: var(--on-color);">ON</div>
                     <div class="legend-text">
-                        <strong>ON (Bem)</strong>
-                        <span>Mobilidade boa ou praticamente normal. Medicação funcionando bem.</span>
+                        <strong>ON - Estou Bem</strong>
+                        <span>Mobilidade boa ou praticamente normal. Sem movimentos involuntários.</span>
                     </div>
                 </div>
 
                 <div class="legend-item">
-                    <div class="legend-color dys">DYS</div>
+                    <div class="legend-color" style="background: var(--dys-np-color);">〰️</div>
                     <div class="legend-text">
-                        <strong>ON com Discinesia</strong>
-                        <span>Movimentos involuntários de contorção que incomodam. Medicação em excesso.</span>
+                        <strong>Discinesia Leve</strong>
+                        <span>Movimentos involuntários presentes, mas <strong>não incomodam</strong>. Consigo fazer minhas atividades.</span>
                     </div>
                 </div>
 
                 <div class="legend-item">
-                    <div class="legend-color off">OFF</div>
+                    <div class="legend-color" style="background: var(--dys-p-color); color: white;">⚠️</div>
                     <div class="legend-text">
-                        <strong>OFF (Travado)</strong>
+                        <strong>Discinesia que Incomoda</strong>
+                        <span>Movimentos involuntários que <strong>atrapalham</strong> minhas atividades. Desconfortável.</span>
+                    </div>
+                </div>
+
+                <div class="legend-item">
+                    <div class="legend-color" style="background: var(--off-color); color: white;">OFF</div>
+                    <div class="legend-text">
+                        <strong>OFF - Travado</strong>
                         <span>Rigidez, lentidão marcante ou imobilidade. Medicação não está funcionando.</span>
                     </div>
                 </div>
@@ -867,8 +878,11 @@
             <button class="state-btn on-btn" onclick="submitEvaluation('ON')">
                 <span>😊</span> ON - Estou Bem
             </button>
-            <button class="state-btn dys-btn" onclick="submitEvaluation('DYS')">
-                <span>〰️</span> ON com Discinesia
+            <button class="state-btn dys-np-btn" onclick="submitEvaluation('DYS_NP')">
+                <span>〰️</span> Discinesia Leve
+            </button>
+            <button class="state-btn dys-p-btn" onclick="submitEvaluation('DYS_P')">
+                <span>⚠️</span> Discinesia que Incomoda
             </button>
             <button class="state-btn off-btn" onclick="submitEvaluation('OFF')">
                 <span>🐢</span> OFF - Travado
@@ -884,16 +898,40 @@
         <div class="alarm-title">Finalizar o Dia</div>
         <div class="alarm-subtitle">Resumo das suas avaliações de hoje</div>
 
-        <div class="summary-stats">
-            <div class="stat-box on">
+        <!-- MÉTRICAS CLÍNICAS PRINCIPAIS -->
+        <div style="background: #e8f4fd; border-radius: 12px; padding: 15px; margin-bottom: 15px; text-align: left;">
+            <p style="font-weight: bold; color: #0056b3; margin: 0 0 10px 0; text-align: center;">MÉTRICAS CLÍNICAS</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #28a745; color: white; border-radius: 6px;">
+                    <span>Tempo ON sem discinesia problemática</span>
+                    <strong id="metric-on-good">0h</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fd7e14; color: white; border-radius: 6px;">
+                    <span>Tempo ON com discinesia problemática</span>
+                    <strong id="metric-on-bad">0h</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #dc3545; color: white; border-radius: 6px;">
+                    <span>Tempo OFF</span>
+                    <strong id="metric-off">0h</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTAGEM DETALHADA -->
+        <div class="summary-stats" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="stat-box" style="background: rgba(40, 167, 69, 0.1); border: 2px solid var(--on-color);">
                 <div class="stat-number" id="summary-on">0</div>
                 <div class="stat-label">ON</div>
             </div>
-            <div class="stat-box dys">
-                <div class="stat-number" id="summary-dys">0</div>
-                <div class="stat-label">Discinesia</div>
+            <div class="stat-box" style="background: rgba(255, 193, 7, 0.1); border: 2px solid var(--dys-np-color);">
+                <div class="stat-number" id="summary-dys-np">0</div>
+                <div class="stat-label">Disc. Leve</div>
             </div>
-            <div class="stat-box off">
+            <div class="stat-box" style="background: rgba(253, 126, 20, 0.1); border: 2px solid var(--dys-p-color);">
+                <div class="stat-number" id="summary-dys-p">0</div>
+                <div class="stat-label">Disc. Problem.</div>
+            </div>
+            <div class="stat-box" style="background: rgba(220, 53, 69, 0.1); border: 2px solid var(--off-color);">
                 <div class="stat-number" id="summary-off">0</div>
                 <div class="stat-label">OFF</div>
             </div>
@@ -901,7 +939,7 @@
 
         <p style="color: #666; font-size: 0.9rem;">
             Total de avaliações: <strong id="summary-total">0</strong><br>
-            Duração do monitoramento: <strong id="summary-duration">0h</strong>
+            Tempo de vigília: <strong id="summary-duration">0h</strong>
         </p>
 
         <div class="email-section">
@@ -1252,10 +1290,56 @@ function submitEvaluation(status) {
 function getStatusLabel(status) {
     const labels = {
         'ON': 'ON (Bem)',
-        'DYS': 'ON com Discinesia',
+        'DYS_NP': 'Discinesia Leve',
+        'DYS_P': 'Discinesia Problemática',
         'OFF': 'OFF (Travado)'
     };
     return labels[status] || status;
+}
+
+/**
+ * CALCULAR MÉTRICAS CLÍNICAS
+ * Retorna as métricas padrão de ensaios clínicos em Parkinson
+ */
+function calculateClinicalMetrics() {
+    const intervalMinutes = appState.config.intervalMinutes || 30;
+    const intervalHours = intervalMinutes / 60;
+
+    // Contar cada estado
+    const counts = {
+        ON: appState.evaluations.filter(e => e.status === 'ON').length,
+        DYS_NP: appState.evaluations.filter(e => e.status === 'DYS_NP').length,
+        DYS_P: appState.evaluations.filter(e => e.status === 'DYS_P').length,
+        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
+    };
+
+    const total = appState.evaluations.length;
+
+    // Calcular tempo em horas (cada avaliação representa o intervalo configurado)
+    const timeOnGood = (counts.ON + counts.DYS_NP) * intervalHours;  // ON sem discinesia problemática
+    const timeOnBad = counts.DYS_P * intervalHours;                   // ON com discinesia problemática
+    const timeOff = counts.OFF * intervalHours;                       // OFF
+    const totalTime = total * intervalHours;                          // Tempo total de vigília
+
+    // Calcular percentuais
+    const pctOnGood = total > 0 ? (timeOnGood / totalTime * 100) : 0;
+    const pctOnBad = total > 0 ? (timeOnBad / totalTime * 100) : 0;
+    const pctOff = total > 0 ? (timeOff / totalTime * 100) : 0;
+
+    return {
+        counts,
+        total,
+        intervalMinutes,
+        // Tempos em horas
+        timeOnGood: timeOnGood.toFixed(1),
+        timeOnBad: timeOnBad.toFixed(1),
+        timeOff: timeOff.toFixed(1),
+        totalTime: totalTime.toFixed(1),
+        // Percentuais
+        pctOnGood: pctOnGood.toFixed(1),
+        pctOnBad: pctOnBad.toFixed(1),
+        pctOff: pctOff.toFixed(1)
+    };
 }
 
 /**
@@ -1306,27 +1390,21 @@ function showFinishModal() {
         return;
     }
 
-    // Calcular estatísticas
-    const stats = {
-        ON: appState.evaluations.filter(e => e.status === 'ON').length,
-        DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
-        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
-    };
+    // Calcular métricas clínicas
+    const metrics = calculateClinicalMetrics();
 
-    document.getElementById('summary-on').textContent = stats.ON;
-    document.getElementById('summary-dys').textContent = stats.DYS;
-    document.getElementById('summary-off').textContent = stats.OFF;
-    document.getElementById('summary-total').textContent = appState.evaluations.length;
+    // Atualizar métricas principais
+    document.getElementById('metric-on-good').textContent = `${metrics.timeOnGood}h (${metrics.pctOnGood}%)`;
+    document.getElementById('metric-on-bad').textContent = `${metrics.timeOnBad}h (${metrics.pctOnBad}%)`;
+    document.getElementById('metric-off').textContent = `${metrics.timeOff}h (${metrics.pctOff}%)`;
 
-    // Calcular duração
-    if (appState.session.startTime) {
-        const start = new Date(appState.session.startTime);
-        const end = new Date();
-        const diffMs = end - start;
-        const hours = Math.floor(diffMs / 3600000);
-        const minutes = Math.floor((diffMs % 3600000) / 60000);
-        document.getElementById('summary-duration').textContent = `${hours}h ${minutes}min`;
-    }
+    // Atualizar contagens
+    document.getElementById('summary-on').textContent = metrics.counts.ON;
+    document.getElementById('summary-dys-np').textContent = metrics.counts.DYS_NP;
+    document.getElementById('summary-dys-p').textContent = metrics.counts.DYS_P;
+    document.getElementById('summary-off').textContent = metrics.counts.OFF;
+    document.getElementById('summary-total').textContent = metrics.total;
+    document.getElementById('summary-duration').textContent = `${metrics.totalTime}h`;
 
     // Preencher email
     document.getElementById('finish-email').value = appState.config.destinationEmail;
@@ -1402,56 +1480,25 @@ async function finishDayAndSend() {
 
 /**
  * ENVIAR EMAIL VIA FORMSUBMIT
- * Envia relatório completo com dados CSV no corpo do email
+ * Envia relatório completo com métricas clínicas e dados CSV
  */
 async function sendEmail(toEmail) {
     try {
-        // Calcular estatísticas
-        const stats = {
-            ON: appState.evaluations.filter(e => e.status === 'ON').length,
-            DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
-            OFF: appState.evaluations.filter(e => e.status === 'OFF').length
-        };
-
-        const total = appState.evaluations.length;
-
-        // Calcular duração da sessão
-        let duration = 'N/A';
-        if (appState.session.startTime) {
-            const start = new Date(appState.session.startTime);
-            const end = new Date();
-            const diffMs = end - start;
-            const hours = Math.floor(diffMs / 3600000);
-            const minutes = Math.floor((diffMs % 3600000) / 60000);
-            duration = `${hours}h ${minutes}min`;
-        }
-
-        // Criar tabela HTML com as avaliações
-        const evalRows = appState.evaluations.map(eval => {
-            const typeLabel = eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Automática';
-            const statusColor = eval.status === 'ON' ? '#28a745' : eval.status === 'DYS' ? '#ffc107' : '#dc3545';
-            return `<tr>
-                <td style="padding: 8px; border: 1px solid #ddd;">${eval.dateFormatted}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${eval.timeFormatted}</td>
-                <td style="padding: 8px; border: 1px solid #ddd; background-color: ${statusColor}; color: ${eval.status === 'DYS' ? '#000' : '#fff'}; font-weight: bold;">${eval.status}</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${typeLabel}</td>
-            </tr>`;
-        }).join('');
+        // Calcular métricas clínicas
+        const metrics = calculateClinicalMetrics();
 
         // Gerar CSV completo como texto
         const csvContent = generateCSVContent();
-
-        // Formatar CSV para exibição (separar linhas)
         const csvLines = csvContent.split('\n').filter(line => line.trim());
         const csvFormatted = csvLines.join('\n');
 
-        // Criar lista de avaliações em texto simples para o corpo do email
+        // Criar lista de avaliações em texto simples
         const evalListText = appState.evaluations.map(eval => {
             const typeLabel = eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Auto';
-            return `${eval.dateFormatted} ${eval.timeFormatted} | ${eval.status} | ${typeLabel}`;
+            return `${eval.dateFormatted} ${eval.timeFormatted} | ${getStatusLabel(eval.status)} | ${typeLabel}`;
         }).join('\n');
 
-        // Enviar via FormSubmit com dados completos
+        // Enviar via FormSubmit com métricas clínicas em destaque
         const response = await fetch(FORMSUBMIT_CONFIG.endpoint + toEmail, {
             method: 'POST',
             headers: {
@@ -1464,22 +1511,37 @@ async function sendEmail(toEmail) {
                 _captcha: 'false',
 
                 // Dados do paciente
-                '1. PACIENTE': appState.patient.name,
-                '2. CPF': appState.patient.cpf,
-                '3. DATA': new Date().toLocaleDateString('pt-BR'),
-                '4. DURAÇÃO': duration,
+                '01. PACIENTE': appState.patient.name,
+                '02. CPF': appState.patient.cpf,
+                '03. DATA': new Date().toLocaleDateString('pt-BR'),
+                '04. INTERVALO': `${metrics.intervalMinutes} minutos`,
 
-                // Resumo estatístico
-                '5. TOTAL AVALIAÇÕES': total,
-                '6. ON (Bem)': `${stats.ON} avaliações (${total > 0 ? ((stats.ON / total) * 100).toFixed(1) : 0}%)`,
-                '7. DISCINESIA': `${stats.DYS} avaliações (${total > 0 ? ((stats.DYS / total) * 100).toFixed(1) : 0}%)`,
-                '8. OFF (Travado)': `${stats.OFF} avaliações (${total > 0 ? ((stats.OFF / total) * 100).toFixed(1) : 0}%)`,
+                // === MÉTRICAS CLÍNICAS (DESFECHOS PRIMÁRIOS) ===
+                '05. ══════════════════════════════════': '══════════════════════════════════',
+                '06. *** MÉTRICAS CLÍNICAS ***': '(Desfechos para Ensaios Clínicos)',
+                '07. ══════════════════════════════════': '══════════════════════════════════',
 
-                // Lista de avaliações
-                '9. AVALIAÇÕES DETALHADAS': '\n' + evalListText,
+                '08. TEMPO ON SEM DISCINESIA PROBLEMÁTICA': `${metrics.timeOnGood}h (${metrics.pctOnGood}%)`,
+                '09. TEMPO ON COM DISCINESIA PROBLEMÁTICA': `${metrics.timeOnBad}h (${metrics.pctOnBad}%)`,
+                '10. TEMPO OFF': `${metrics.timeOff}h (${metrics.pctOff}%)`,
+                '11. TEMPO TOTAL DE VIGÍLIA': `${metrics.totalTime}h`,
 
-                // CSV completo para copiar
-                '10. DADOS CSV (copiar e salvar como .csv)': '\n' + csvFormatted
+                // === CONTAGEM DETALHADA ===
+                '12. ──────────────────────────────────': '──────────────────────────────────',
+                '13. CONTAGEM POR ESTADO': '',
+                '14. ON (Bem)': `${metrics.counts.ON} avaliações`,
+                '15. Discinesia Leve (não problemática)': `${metrics.counts.DYS_NP} avaliações`,
+                '16. Discinesia Problemática': `${metrics.counts.DYS_P} avaliações`,
+                '17. OFF (Travado)': `${metrics.counts.OFF} avaliações`,
+                '18. TOTAL': `${metrics.total} avaliações`,
+
+                // === AVALIAÇÕES INDIVIDUAIS ===
+                '19. ──────────────────────────────────': '──────────────────────────────────',
+                '20. AVALIAÇÕES DETALHADAS': '\n' + evalListText,
+
+                // === CSV PARA ARQUIVO ===
+                '21. ──────────────────────────────────': '──────────────────────────────────',
+                '22. DADOS CSV (copiar e salvar como .csv)': '\n' + csvFormatted
             })
         });
 
@@ -1499,12 +1561,17 @@ async function sendEmail(toEmail) {
 
 /**
  * GERAR CONTEÚDO CSV
+ * Códigos de status:
+ * 1 = OFF
+ * 2 = ON (sem discinesia)
+ * 3 = DYS_NP (discinesia não problemática)
+ * 4 = DYS_P (discinesia problemática)
  */
 function generateCSVContent() {
     let csv = 'Nome,CPF,Data,Hora,Timestamp,Status,Status_Codigo,Tipo_Avaliacao\n';
 
     appState.evaluations.forEach(eval => {
-        const statusCode = { 'ON': 2, 'DYS': 3, 'OFF': 1 }[eval.status] || 0;
+        const statusCode = { 'ON': 2, 'DYS_NP': 3, 'DYS_P': 4, 'OFF': 1 }[eval.status] || 0;
         csv += `"${appState.patient.name}","${appState.patient.cpf}","${eval.dateFormatted}","${eval.timeFormatted}","${eval.timestamp}","${eval.status}",${statusCode},"${eval.type}"\n`;
     });
 
@@ -1515,6 +1582,8 @@ function generateCSVContent() {
  * GERAR CONTEÚDO JSON
  */
 function generateJSONContent() {
+    const metrics = calculateClinicalMetrics();
+
     const data = {
         patient: {
             name: appState.patient.name,
@@ -1523,12 +1592,37 @@ function generateJSONContent() {
         session: {
             startTime: appState.session.startTime,
             endTime: new Date().toISOString(),
-            totalEvaluations: appState.evaluations.length
+            intervalMinutes: metrics.intervalMinutes,
+            totalEvaluations: metrics.total
         },
-        summary: {
-            ON: appState.evaluations.filter(e => e.status === 'ON').length,
-            DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
-            OFF: appState.evaluations.filter(e => e.status === 'OFF').length
+        // Métricas clínicas padrão (desfechos para ensaios clínicos)
+        clinicalMetrics: {
+            timeOnWithoutTroublesomeDyskinesia: {
+                hours: parseFloat(metrics.timeOnGood),
+                percentage: parseFloat(metrics.pctOnGood),
+                description: 'Tempo ON sem discinesia problemática (ON + Discinesia leve)'
+            },
+            timeOnWithTroublesomeDyskinesia: {
+                hours: parseFloat(metrics.timeOnBad),
+                percentage: parseFloat(metrics.pctOnBad),
+                description: 'Tempo ON com discinesia problemática'
+            },
+            timeOff: {
+                hours: parseFloat(metrics.timeOff),
+                percentage: parseFloat(metrics.pctOff),
+                description: 'Tempo OFF'
+            },
+            totalWakingTime: {
+                hours: parseFloat(metrics.totalTime),
+                description: 'Tempo total de vigília'
+            }
+        },
+        // Contagem por estado
+        counts: {
+            ON: metrics.counts.ON,
+            DYS_NP: metrics.counts.DYS_NP,
+            DYS_P: metrics.counts.DYS_P,
+            OFF: metrics.counts.OFF
         },
         evaluations: appState.evaluations
     };
@@ -1542,6 +1636,7 @@ function generateJSONContent() {
 async function generatePDFContent() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    const metrics = calculateClinicalMetrics();
 
     // Título
     doc.setFontSize(18);
@@ -1554,28 +1649,45 @@ async function generatePDFContent() {
     doc.text(`Paciente: ${appState.patient.name}`, 20, 35);
     doc.text(`CPF: ${appState.patient.cpf}`, 20, 42);
     doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 20, 49);
+    doc.text(`Intervalo entre avaliações: ${metrics.intervalMinutes} minutos`, 20, 56);
 
-    // Resumo
-    const stats = {
-        ON: appState.evaluations.filter(e => e.status === 'ON').length,
-        DYS: appState.evaluations.filter(e => e.status === 'DYS').length,
-        OFF: appState.evaluations.filter(e => e.status === 'OFF').length
-    };
-
+    // MÉTRICAS CLÍNICAS (DESFECHOS)
     doc.setFontSize(14);
-    doc.text('Resumo', 20, 65);
+    doc.setTextColor(0, 86, 179);
+    doc.text('MÉTRICAS CLÍNICAS (Desfechos para Ensaios)', 20, 70);
 
     doc.autoTable({
-        startY: 70,
-        head: [['Estado', 'Quantidade', 'Percentual']],
+        startY: 75,
+        head: [['Métrica', 'Tempo', 'Percentual']],
         body: [
-            ['ON (Bem)', stats.ON, `${((stats.ON / appState.evaluations.length) * 100).toFixed(1)}%`],
-            ['ON com Discinesia', stats.DYS, `${((stats.DYS / appState.evaluations.length) * 100).toFixed(1)}%`],
-            ['OFF (Travado)', stats.OFF, `${((stats.OFF / appState.evaluations.length) * 100).toFixed(1)}%`],
-            ['Total', appState.evaluations.length, '100%']
+            ['Tempo ON sem discinesia problemática', `${metrics.timeOnGood}h`, `${metrics.pctOnGood}%`],
+            ['Tempo ON com discinesia problemática', `${metrics.timeOnBad}h`, `${metrics.pctOnBad}%`],
+            ['Tempo OFF', `${metrics.timeOff}h`, `${metrics.pctOff}%`],
+            ['Tempo total de vigília', `${metrics.totalTime}h`, '100%']
         ],
         theme: 'grid',
-        headStyles: { fillColor: [0, 86, 179] }
+        headStyles: { fillColor: [0, 86, 179] },
+        styles: { fontSize: 10 }
+    });
+
+    // Contagem por Estado
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Contagem por Estado', 20, doc.lastAutoTable.finalY + 15);
+
+    doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 20,
+        head: [['Estado', 'Quantidade', 'Percentual']],
+        body: [
+            ['ON (Bem)', metrics.counts.ON, `${metrics.total > 0 ? ((metrics.counts.ON / metrics.total) * 100).toFixed(1) : 0}%`],
+            ['Discinesia Leve (não problemática)', metrics.counts.DYS_NP, `${metrics.total > 0 ? ((metrics.counts.DYS_NP / metrics.total) * 100).toFixed(1) : 0}%`],
+            ['Discinesia Problemática', metrics.counts.DYS_P, `${metrics.total > 0 ? ((metrics.counts.DYS_P / metrics.total) * 100).toFixed(1) : 0}%`],
+            ['OFF (Travado)', metrics.counts.OFF, `${metrics.total > 0 ? ((metrics.counts.OFF / metrics.total) * 100).toFixed(1) : 0}%`],
+            ['Total', metrics.total, '100%']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [100, 100, 100] },
+        styles: { fontSize: 10 }
     });
 
     // Tabela de avaliações
@@ -1585,7 +1697,7 @@ async function generatePDFContent() {
     const evalRows = appState.evaluations.map(eval => [
         eval.dateFormatted,
         eval.timeFormatted,
-        eval.status,
+        getStatusLabel(eval.status),
         eval.type === 'basal' ? 'Basal' : eval.type === 'manual' ? 'Manual' : 'Automática'
     ]);
 
@@ -1594,7 +1706,8 @@ async function generatePDFContent() {
         head: [['Data', 'Hora', 'Estado', 'Tipo']],
         body: evalRows,
         theme: 'striped',
-        headStyles: { fillColor: [0, 86, 179] }
+        headStyles: { fillColor: [0, 86, 179] },
+        styles: { fontSize: 9 }
     });
 
     // Rodapé
